@@ -127,9 +127,13 @@
                 <div class="col-md-6">
                     <div class="mb-3">
                         <label for="model_id" class="form-label">🤖 LLMモデル名</label>
-                        <input type="text" class="form-control" id="model_id" name="model_id" 
-                               placeholder="例: ChatGPT-4, Gemini-Pro, Claude-3" required>
-                        <div class="form-text">分析するLLMモデル名を入力してください</div>
+                        <select class="form-select" id="model_id" name="model_id" required>
+                            <option value="">モデルを選択してください</option>
+                            {% for model in ai_models %}
+                            <option value="{{ model.model_code }}" title="{{ model.description }}">{{ model.display_name }}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-text">分析するLLMモデルを選択してください</div>
                     </div>
 
                     <div class="mb-3">
