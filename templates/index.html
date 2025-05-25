@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="mb-4">🤖 LLM投資アイデア検証ツール</h1>
+    
+    <!-- 最近の分析サマリー -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card metric-card">
+                <div class="card-body">
+                    <h5 class="card-title">総分析回数</h5>
+                    <div class="metric-number">{{ stats.total_analyses }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card metric-card success-bg">
+                <div class="card-body">
+                    <h5 class="card-title">全体勝率</h5>
+                    <div class="metric-number">{{ stats.win_rate }}%</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card metric-card info-bg">
+                <div class="card-body">
+                    <h5 class="card-title">平均予測精度</h5>
+                    <div class="metric-number">{{ stats.avg_accuracy }}%</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card metric-card danger-bg">
+                <div class="card-body">
+                    <h5 class="card-title">分析LLMモデル数</h5>
+                    <div class="metric-number">{{ stats.unique_models }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 概要説明 -->
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>ツール概要</h5>
+                </div>
+                <div class="card-body">
+                    <h6>🎯 主要機能</h6>
+                    <div class="mb-3">
+                        <strong>1. 固定銘柄でのLLM予測精度検証</strong><br>
+                        <small class="text-muted">同一銘柄に対する複数LLMの予測精度を比較</small>
+                    </div>
+                    <div class="mb-3">
+                        <strong>2. LLM銘柄選定能力検証</strong><br>
+                        <small class="text-muted">LLMの銘柄選定能力を期間別に検証</small>
+                    </div>
+                    <div class="mb-3">
+                        <strong>3. 包括的な履歴分析・統計機能</strong><br>
+                        <small class="text-muted">過去の分析結果の統計的評価</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-calculator me-2"></i>分析指標</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <strong>予測精度</strong><br>
+                        <code class="small">予測精度(%) = 100 - |実際価格 - 予測価格| / 実際価格 × 100</code>
+                    </div>
+                    <div class="mb-3">
+                        <strong>騰落率</strong><br>
+                        <code class="small">騰落率(%) = (売却価格 - 購入価格) / 購入価格 × 100</code>
+                    </div>
+                    <div class="mb-3">
+                        <strong>勝率</strong><br>
+                        <code class="small">勝率(%) = 利益が出た回数 / 総回数 × 100</code>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 使用方法 -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-rocket me-2"></i>使用方法</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 text-center mb-3">
+                            <div class="mb-2">
+                                <i class="fas fa-mouse-pointer fa-3x text-primary"></i>
+                            </div>
+                            <h6>1. 分析タイプを選択</h6>
+                            <small class="text-muted">固定銘柄分析・銘柄選定分析・履歴分析から選択</small>
+                        </div>
+                        <div class="col-md-3 text-center mb-3">
+                            <div class="mb-2">
+                                <i class="fas fa-edit fa-3x text-success"></i>
+                            </div>
+                            <h6>2. 必要な情報を入力</h6>
+                            <small class="text-muted">LLMモデル名、銘柄コード、予測価格など</small>
+                        </div>
+                        <div class="col-md-3 text-center mb-3">
+                            <div class="mb-2">
+                                <i class="fas fa-play fa-3x text-info"></i>
+                            </div>
+                            <h6>3. シミュレーション実行</h6>
+                            <small class="text-muted">自動で株価データを取得し損益を計算</small>
+                        </div>
+                        <div class="col-md-3 text-center mb-3">
+                            <div class="mb-2">
+                                <i class="fas fa-save fa-3x text-warning"></i>
+                            </div>
+                            <h6>4. 結果を確認・保存</h6>
+                            <small class="text-muted">結果を確認してデータベースに保存</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 注意事項 -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="alert alert-warning">
+                <h6><i class="fas fa-exclamation-triangle me-2"></i>注意事項</h6>
+                <ul class="mb-0">
+                    <li>このツールは検証目的であり、実際の投資判断には使用しないでください</li>
+                    <li>株価データはyfinanceから取得するため、インターネット接続が必要です</li>
+                    <li>指定日が市場休場日の場合、直後の営業日のデータを使用します</li>
+                    <li>実際の取引手数料や税金は考慮されていません</li>
+                    <li>過去のパフォーマンスは将来の結果を保証するものではありません</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

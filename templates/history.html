@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+
+{% block title %}履歴分析 - LLM投資アイデア検証ツール{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">📊 履歴分析・統計</h1>
+<p class="text-muted mb-4">過去の分析結果を統計的に評価し、LLMのパフォーマンスを比較します。</p>
+
+<!-- サマリー統計 -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card metric-card">
+            <div class="card-body text-center">
+                <h5 class="card-title">総分析回数</h5>
+                <div class="metric-number">{{ stats.total_analyses }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card metric-card success-bg">
+            <div class="card-body text-center">
+                <h5 class="card-title">全体勝率</h5>
+                <div class="metric-number">{{ stats.win_rate }}%</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card metric-card info-bg">
+            <div class="card-body text-center">
+                <h5 class="card-title">平均予測精度</h5>
+                <div class="metric-number">{{ stats.avg_accuracy }}%</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card metric-card danger-bg">
+            <div class="card-body text-center">
+                <h5 class="card-title">分析LLMモデル数</h5>
+                <div class="metric-number">{{ stats.unique_models }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if not fixed_data and not selection_data %}
+<div class="alert alert-warning">
+    <h6><i class="fas fa-info-circle me-2"></i>分析履歴がありません</h6>
+    <p class="mb-0">まず他のページでシミュレーションを実行してください。</p>
+</div>
+{% else %}
+
+<!-- タブナビゲーション -->
+<ul class="nav nav-tabs" id="historyTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="fixed-tab" data-bs-toggle="tab" data-bs-target="#fixed" 
+                type="button" role="tab" aria-controls="fixed" aria-selected="true">
+            <i class="fas fa-chart-bar me-2"></i>固定銘柄分析 ({{ fixed_data|length }}件)
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="selection-tab" data-bs-toggle="tab" data-bs-target="#selection" 
+                type="button" role="tab" aria-controls="selection" aria-selected="false">
+            <i class="fas fa-bullseye me-2"></i>銘柄選定分析 ({{ selection_data|length }}件)
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content mt-4" id="historyTabContent">
+    <!-- 固定銘柄分析タブ -->
+    <div class="tab-pane fade show active" id="fixed" role="tabpanel" aria-labelledby="fixed-tab">
+        {% if fixed_data %}
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-chart-bar me-2"></i>固定銘柄分析履歴</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>実行日</th>
+                                <th>モデル</th>
+                                <th>銘柄</th>
+                                <th>購入価格</th>
+                                <th>売却価格</th>
+                                <th>予測価格</th>
+                                <th>損益</th>
+                                <th>騰落率</th>
+                                <th>予測精度</th>
+                                <th>期間</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in fixed_data %}
+                            <tr>
+                                <td>{{ item.execution_date.strftime('%Y-%m-%d') if item.execution_date else 'N/A' }}</td>
+                                <td><span class="badge bg-primary">{{ item.model_id }}</span></td>
+                                <td><strong>{{ item.stock_code }}</strong></td>
+                                <td>¥{{ "{:,.0f}".format(item.buy_price) }}</td>
+                                <td>¥{{ "{:,.0f}".format(item.sell_price) }}</td>
+                                <td>¥{{ "{:,.0f}".format(item.predicted_price) }}</td>
+                                <td class="{% if item.profit_loss > 0 %}text-success{% else %}text-danger{% endif %}">
+                                    ¥{{ "{:+,.0f}".format(item.profit_loss) }}
+                                </td>
+                                <td class="{% if item.return_rate > 0 %}text-success{% else %}text-danger{% endif %}">
+                                    {{ "{:+.1f}".format(item.return_rate) }}%
+                                </td>
+                                <td class="{% if item.prediction_accuracy > 80 %}text-success{% elif item.prediction_accuracy > 60 %}text-warning{% else %}text-danger{% endif %}">
+                                    {{ "{:.1f}".format(item.prediction_accuracy) }}%
+                                </td>
+                                <td>{{ item.period_days }}日</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle me-2"></i>固定銘柄分析の履歴がありません。
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- 銘柄選定分析タブ -->
+    <div class="tab-pane fade" id="selection" role="tabpanel" aria-labelledby="selection-tab">
+        {% if selection_data %}
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-bullseye me-2"></i>銘柄選定分析履歴</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>実行日</th>
+                                <th>期間</th>
+                                <th>モデル</th>
+                                <th>銘柄</th>
+                                <th>購入価格</th>
+                                <th>売却価格</th>
+                                <th>損益</th>
+                                <th>騰落率</th>
+                                <th>選定理由</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in selection_data %}
+                            <tr>
+                                <td>{{ item.execution_date.strftime('%Y-%m-%d') if item.execution_date else 'N/A' }}</td>
+                                <td><span class="badge bg-info">{{ item.analysis_period }}</span></td>
+                                <td><span class="badge bg-primary">{{ item.model_id }}</span></td>
+                                <td><strong>{{ item.stock_code }}</strong></td>
+                                <td>¥{{ "{:,.0f}".format(item.buy_price) }}</td>
+                                <td>¥{{ "{:,.0f}".format(item.sell_price) }}</td>
+                                <td class="{% if item.profit_loss > 0 %}text-success{% else %}text-danger{% endif %}">
+                                    ¥{{ "{:+,.0f}".format(item.profit_loss) }}
+                                </td>
+                                <td class="{% if item.return_rate > 0 %}text-success{% else %}text-danger{% endif %}">
+                                    {{ "{:+.1f}".format(item.return_rate) }}%
+                                </td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-secondary" type="button" 
+                                            data-bs-toggle="collapse" data-bs-target="#reason-{{ loop.index }}" 
+                                            aria-expanded="false">
+                                        理由を表示
+                                    </button>
+                                    <div class="collapse mt-2" id="reason-{{ loop.index }}">
+                                        <div class="card card-body small">
+                                            {{ item.selection_reason }}
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle me-2"></i>銘柄選定分析の履歴がありません。
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% endif %}
+{% endblock %}

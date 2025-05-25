@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+
+{% block title %}固定銘柄分析 - LLM投資アイデア検証ツール{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">📊 固定銘柄でのLLM予測精度検証</h1>
+<p class="text-muted mb-4">同一銘柄に対する複数LLMの予測精度を比較分析します。</p>
+
+{% if success_message %}
+<div class="alert alert-success alert-dismissible fade show" role="alert">
+    <i class="fas fa-check-circle me-2"></i>{{ success_message }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endif %}
+
+{% if error_message %}
+<div class="alert alert-danger alert-dismissible fade show" role="alert">
+    <i class="fas fa-exclamation-circle me-2"></i>{{ error_message }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endif %}
+
+{% if result %}
+<!-- 結果表示 -->
+<div class="card mb-4">
+    <div class="card-header bg-success text-white">
+        <h5 class="mb-0"><i class="fas fa-check-circle me-2"></i>シミュレーション完了！</h5>
+    </div>
+    <div class="card-body">
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title">💰 総損益</h5>
+                        <h3 class="{% if result.profit_loss > 0 %}text-success{% else %}text-danger{% endif %}">
+                            ¥{{ "{:,.2f}".format(result.profit_loss) }}
+                        </h3>
+                        <small class="text-muted">{{ "{:+.2f}".format(result.return_rate) }}%</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title">📊 騰落率</h5>
+                        <h3 class="{% if result.return_rate > 0 %}text-success{% else %}text-danger{% endif %}">
+                            {{ "{:+.2f}".format(result.return_rate) }}%
+                        </h3>
+                        <small class="text-muted">{% if result.return_rate > 0 %}利益{% else %}損失{% endif %}</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title">🎯 予測精度</h5>
+                        <h3 class="{% if result.prediction_accuracy > 80 %}text-success{% elif result.prediction_accuracy > 60 %}text-warning{% else %}text-danger{% endif %}">
+                            {{ "{:.2f}".format(result.prediction_accuracy) }}%
+                        </h3>
+                        <small class="text-muted">{% if result.prediction_accuracy > 80 %}高精度{% else %}要改善{% endif %}</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title">📅 保有期間</h5>
+                        <h3 class="text-info">{{ result.period_days }}日</h3>
+                        <small class="text-muted">設定期間</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 詳細情報 -->
+        <div class="row">
+            <div class="col-md-6">
+                <h6>📈 株価情報</h6>
+                <ul class="list-unstyled">
+                    <li><strong>購入価格:</strong> ¥{{ "{:,.2f}".format(result.buy_price) }} ({{ result.actual_buy_date }})</li>
+                    <li><strong>売却価格:</strong> ¥{{ "{:,.2f}".format(result.sell_price) }} ({{ result.actual_sell_date }})</li>
+                    <li><strong>LLM予測価格:</strong> ¥{{ "{:,.2f}".format(result.predicted_price) }}</li>
+                    <li><strong>予測誤差:</strong> ¥{{ "{:,.2f}".format(result.prediction_error) }}</li>
+                </ul>
+            </div>
+            <div class="col-md-6">
+                <h6>🤖 LLM分析情報</h6>
+                <ul class="list-unstyled">
+                    <li><strong>モデル:</strong> {{ result.model_id }}</li>
+                    <li><strong>銘柄:</strong> {{ result.stock_code }}</li>
+                    <li><strong>分析期間:</strong> {{ result.period_days }}日間</li>
+                    <li><strong>予測精度:</strong> {{ "{:.2f}".format(result.prediction_accuracy) }}%</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- 保存フォーム -->
+        <form method="post" action="/fixed-stock/save" class="mt-4">
+            <input type="hidden" name="model_id" value="{{ result.model_id }}">
+            <input type="hidden" name="stock_code" value="{{ result.stock_code }}">
+            <input type="hidden" name="buy_date" value="{{ result.actual_buy_date }}">
+            <input type="hidden" name="buy_price" value="{{ result.buy_price }}">
+            <input type="hidden" name="sell_date" value="{{ result.actual_sell_date }}">
+            <input type="hidden" name="sell_price" value="{{ result.sell_price }}">
+            <input type="hidden" name="predicted_price" value="{{ result.predicted_price }}">
+            <input type="hidden" name="profit_loss" value="{{ result.profit_loss }}">
+            <input type="hidden" name="return_rate" value="{{ result.return_rate }}">
+            <input type="hidden" name="prediction_accuracy" value="{{ result.prediction_accuracy }}">
+            <input type="hidden" name="period_days" value="{{ result.period_days }}">
+            <input type="hidden" name="notes" value="{{ result.notes }}">
+            <button type="submit" class="btn btn-primary btn-lg">
+                <i class="fas fa-save me-2"></i>結果を保存
+            </button>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+<!-- 入力フォーム -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-edit me-2"></i>固定銘柄分析フォーム</h5>
+    </div>
+    <div class="card-body">
+        <form method="post" action="/fixed-stock">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="model_id" class="form-label">🤖 LLMモデル名</label>
+                        <input type="text" class="form-control" id="model_id" name="model_id" 
+                               placeholder="例: ChatGPT-4, Gemini-Pro, Claude-3" required>
+                        <div class="form-text">分析するLLMモデル名を入力してください</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="stock_code" class="form-label">📈 銘柄コード</label>
+                        <input type="text" class="form-control" id="stock_code" name="stock_code" 
+                               placeholder="例: 7203 (トヨタ), 6758 (ソニー)" required>
+                        <div class="form-text">4桁の銘柄コードを入力してください</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="predicted_price" class="form-label">🔮 LLM予測価格 (円)</label>
+                        <input type="number" step="0.01" class="form-control" id="predicted_price" 
+                               name="predicted_price" placeholder="予測価格を入力" required>
+                        <div class="form-text">LLMが予測した株価を入力してください</div>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="buy_date" class="form-label">📅 購入日</label>
+                        <input type="date" class="form-control" id="buy_date" name="buy_date" required>
+                        <div class="form-text">株式を購入した日付</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="sell_date" class="form-label">📅 売却日</label>
+                        <input type="date" class="form-control" id="sell_date" name="sell_date" required>
+                        <div class="form-text">株式を売却した（する予定の）日付</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">📝 備考</label>
+                        <textarea class="form-control" id="notes" name="notes" rows="3" 
+                                  placeholder="LLMの予測根拠や特記事項があれば記入してください"></textarea>
+                        <div class="form-text">オプション：追加情報があれば記入</div>
+                    </div>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-lg">
+                <i class="fas fa-rocket me-2"></i>シミュレーション実行
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // 今日の日付を設定
+    document.addEventListener('DOMContentLoaded', function() {
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('buy_date').value = today;
+        
+        // 売却日を30日後に設定
+        const sellDate = new Date();
+        sellDate.setDate(sellDate.getDate() + 30);
+        document.getElementById('sell_date').value = sellDate.toISOString().split('T')[0];
+    });
+</script>
+{% endblock %}
