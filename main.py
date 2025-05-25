@@ -8,6 +8,7 @@ from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 
+from analytics import ModelAnalytics
 from database import DatabaseManager
 from stock_analyzer import StockAnalyzer
 
@@ -458,21 +459,84 @@ async def save_stock_selection(
 
 
 @app.get("/history", response_class=HTMLResponse)
-async def history(request: Request):
+async def history(
+    request: Request,
+    data_type: Optional[str] = "all",
+    model_id: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    min_return: Optional[str] = None,
+    max_return: Optional[str] = None,
+    sort_by: Optional[str] = "created_at",
+    sort_order: Optional[str] = "desc",
+):
     """履歴分析ページ"""
-    fixed_df = DatabaseManager.load_fixed_stock_data()
-    selection_df = DatabaseManager.load_stock_selection_data()
+
+    # 文字列パラメータを適切な型に変換
+    def safe_float_convert(value: Optional[str]) -> Optional[float]:
+        if value is None or value.strip() == "":
+            return None
+        try:
+            return float(value)
+        except ValueError:
+            return None
+
+    min_return_float = safe_float_convert(min_return)
+    max_return_float = safe_float_convert(max_return)
+
+    # 空文字列をNoneに変換
+    model_id = model_id if model_id and model_id.strip() else None
+    start_date = start_date if start_date and start_date.strip() else None
+    end_date = end_date if end_date and end_date.strip() else None
+
+    # フィルタリングされたデータを取得
+    filtered_data = ModelAnalytics.get_filtered_data(
+        data_type=data_type,
+        model_id=model_id,
+        start_date=start_date,
+        end_date=end_date,
+        min_return=min_return_float,
+        max_return=max_return_float,
+        sort_by=sort_by,
+        sort_order=sort_order,
+    )
+
+    # モデルパフォーマンスランキングを取得
+    model_ranking = ModelAnalytics.get_model_performance_ranking()
+
+    # チャート用データを取得
+    chart_data = ModelAnalytics.get_model_comparison_chart_data()
+
+    # 統計情報を取得
     stats = DatabaseManager.get_summary_stats()
+
+    # AIモデル一覧を取得（フィルタ用）
+    ai_models = DatabaseManager.get_ai_models()
+
+    # フィルタ条件を保持
+    filters = {
+        "data_type": data_type,
+        "model_id": model_id,
+        "start_date": start_date,
+        "end_date": end_date,
+        "min_return": min_return,
+        "max_return": max_return,
+        "sort_by": sort_by,
+        "sort_order": sort_order,
+    }
 
     return templates.TemplateResponse(
         "history.html",
         {
             "request": request,
-            "fixed_data": fixed_df.to_dict("records") if not fixed_df.empty else [],
-            "selection_data": selection_df.to_dict("records")
-            if not selection_df.empty
-            else [],
+            "fixed_data": filtered_data["fixed_data"],
+            "selection_data": filtered_data["selection_data"],
+            "total_filtered_records": filtered_data["total_records"],
+            "model_ranking": model_ranking,
+            "chart_data": chart_data,
             "stats": stats,
+            "ai_models": ai_models,
+            "filters": filters,
         },
     )
 
@@ -482,11 +546,23 @@ async def export_fixed_stock(
     model_id: Optional[str] = None,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
-    min_return: Optional[float] = None,
-    max_return: Optional[float] = None,
+    min_return: Optional[str] = None,
+    max_return: Optional[str] = None,
 ):
     """固定銘柄分析データをCSVエクスポート"""
     try:
+        # 文字列パラメータを適切な型に変換
+        def safe_float_convert(value: Optional[str]) -> Optional[float]:
+            if value is None or value.strip() == "":
+                return None
+            try:
+                return float(value)
+            except ValueError:
+                return None
+
+        min_return_float = safe_float_convert(min_return)
+        max_return_float = safe_float_convert(max_return)
+
         # データを取得
         fixed_df = DatabaseManager.load_fixed_stock_data()
 
@@ -510,11 +586,11 @@ async def export_fixed_stock(
                 ]
 
             # 騰落率範囲でフィルタリング
-            if min_return is not None:
-                fixed_df = fixed_df[fixed_df["return_rate"] >= min_return]
+            if min_return_float is not None:
+                fixed_df = fixed_df[fixed_df["return_rate"] >= min_return_float]
 
-            if max_return is not None:
-                fixed_df = fixed_df[fixed_df["return_rate"] <= max_return]
+            if max_return_float is not None:
+                fixed_df = fixed_df[fixed_df["return_rate"] <= max_return_float]
 
         if fixed_df.empty:
             # 空の場合はヘッダーのみのCSVを返す
@@ -617,11 +693,23 @@ async def export_stock_selection(
     analysis_period: Optional[str] = None,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
-    min_return: Optional[float] = None,
-    max_return: Optional[float] = None,
+    min_return: Optional[str] = None,
+    max_return: Optional[str] = None,
 ):
     """銘柄選定分析データをCSVエクスポート"""
     try:
+        # 文字列パラメータを適切な型に変換
+        def safe_float_convert(value: Optional[str]) -> Optional[float]:
+            if value is None or value.strip() == "":
+                return None
+            try:
+                return float(value)
+            except ValueError:
+                return None
+
+        min_return_float = safe_float_convert(min_return)
+        max_return_float = safe_float_convert(max_return)
+
         # データを取得
         selection_df = DatabaseManager.load_stock_selection_data()
 
@@ -651,11 +739,15 @@ async def export_stock_selection(
                 ]
 
             # 騰落率範囲でフィルタリング
-            if min_return is not None:
-                selection_df = selection_df[selection_df["return_rate"] >= min_return]
+            if min_return_float is not None:
+                selection_df = selection_df[
+                    selection_df["return_rate"] >= min_return_float
+                ]
 
-            if max_return is not None:
-                selection_df = selection_df[selection_df["return_rate"] <= max_return]
+            if max_return_float is not None:
+                selection_df = selection_df[
+                    selection_df["return_rate"] <= max_return_float
+                ]
 
         if selection_df.empty:
             # 空の場合はヘッダーのみのCSVを返す

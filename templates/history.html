@@ -31,6 +31,70 @@
     </div>
 </div>
 
+<!-- フィルターフォーム -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h6 class="mb-0"><i class="fas fa-filter me-2"></i>フィルター・ソート</h6>
+    </div>
+    <div class="card-body">
+        <form method="GET" action="/history">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">データタイプ</label>
+                    <select class="form-select" name="data_type">
+                        <option value="all" {% if filters.data_type == 'all' %}selected{% endif %}>すべて</option>
+                        <option value="fixed" {% if filters.data_type == 'fixed' %}selected{% endif %}>固定銘柄分析</option>
+                        <option value="selection" {% if filters.data_type == 'selection' %}selected{% endif %}>銘柄選定分析</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">LLMモデル</label>
+                    <select class="form-select" name="model_id">
+                        <option value="">すべて</option>
+                        {% for model in ai_models %}
+                        <option value="{{ model.model_code }}" {% if filters.model_id == model.model_code %}selected{% endif %}>
+                            {{ model.display_name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">開始日</label>
+                    <input type="date" class="form-control" name="start_date" value="{{ filters.start_date or '' }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">終了日</label>
+                    <input type="date" class="form-control" name="end_date" value="{{ filters.end_date or '' }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">最小騰落率(%)</label>
+                    <input type="number" class="form-control" name="min_return" value="{{ filters.min_return or '' }}" step="0.1">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">最大騰落率(%)</label>
+                    <input type="number" class="form-control" name="max_return" value="{{ filters.max_return or '' }}" step="0.1">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">ソート順</label>
+                    <select class="form-select" name="sort_by">
+                        <option value="created_at" {% if filters.sort_by == 'created_at' %}selected{% endif %}>作成日時</option>
+                        <option value="return_rate" {% if filters.sort_by == 'return_rate' %}selected{% endif %}>騰落率</option>
+                        <option value="profit_loss" {% if filters.sort_by == 'profit_loss' %}selected{% endif %}>损益</option>
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary me-2">
+                        <i class="fas fa-search me-1"></i>フィルター適用
+                    </button>
+                    <a href="/history" class="btn btn-outline-secondary">
+                        <i class="fas fa-undo me-1"></i>リセット
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
 <!-- サマリー統計 -->
 <div class="row mb-4">
     <div class="col-md-3">
@@ -38,6 +102,9 @@
             <div class="card-body text-center">
                 <h5 class="card-title">総分析回数</h5>
                 <div class="metric-number">{{ stats.total_analyses }}</div>
+                {% if total_filtered_records < stats.total_analyses %}
+                <small class="text-muted">（フィルター結果: {{ total_filtered_records }}件）</small>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -66,6 +133,80 @@
         </div>
     </div>
 </div>
+
+<!-- モデルパフォーマンスランキング -->
+{% if model_ranking %}
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-trophy me-2"></i>LLMモデル パフォーマンスランキング</h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>ランク</th>
+                        <th>モデル名</th>
+                        <th>総分析数</th>
+                        <th>総合勝率</th>
+                        <th>予測精度</th>
+                        <th>平均騰落率</th>
+                        <th>累計損益</th>
+                        <th>最高取引</th>
+                        <th>最低取引</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for model in model_ranking %}
+                    <tr>
+                        <td>
+                            {% if loop.index == 1 %}
+                                <i class="fas fa-trophy text-warning"></i>
+                            {% elif loop.index == 2 %}
+                                <i class="fas fa-medal text-secondary"></i>
+                            {% elif loop.index == 3 %}
+                                <i class="fas fa-medal text-info"></i>
+                            {% else %}
+                                {{ loop.index }}
+                            {% endif %}
+                        </td>
+                        <td><strong>{{ model.model_name }}</strong></td>
+                        <td>
+                            {{ model.total_analyses }}
+                            <small class="text-muted">
+                                (固定:{{ model.fixed_analyses }}, 選定:{{ model.selection_analyses }})
+                            </small>
+                        </td>
+                        <td>
+                            <span class="{% if model.overall_win_rate >= 70 %}text-success{% elif model.overall_win_rate >= 50 %}text-warning{% else %}text-danger{% endif %}">
+                                {{ model.overall_win_rate }}%
+                            </span>
+                        </td>
+                        <td>
+                            {% if model.avg_prediction_accuracy > 0 %}
+                                <span class="{% if model.avg_prediction_accuracy >= 80 %}text-success{% elif model.avg_prediction_accuracy >= 60 %}text-warning{% else %}text-danger{% endif %}">
+                                    {{ model.avg_prediction_accuracy }}%
+                                </span>
+                            {% else %}
+                                <span class="text-muted">N/A</span>
+                            {% endif %}
+                        </td>
+                        <td class="{% if model.avg_return_rate > 0 %}text-success{% else %}text-danger{% endif %}">
+                            {{ "{:+.2f}".format(model.avg_return_rate) }}%
+                        </td>
+                        <td class="{% if model.total_profit_loss > 0 %}text-success{% else %}text-danger{% endif %}">
+                            ¥{{ "{:+,.0f}".format(model.total_profit_loss) }}
+                        </td>
+                        <td class="text-success">{{ "{:+.2f}".format(model.best_trade_return) }}%</td>
+                        <td class="text-danger">{{ "{:+.2f}".format(model.worst_trade_return) }}%</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
 
 {% if not fixed_data and not selection_data %}
 <div class="alert alert-warning">
@@ -122,7 +263,7 @@
                             {% for item in fixed_data %}
                             <tr>
                                 <td>{{ item.execution_date.strftime('%Y-%m-%d') if item.execution_date else 'N/A' }}</td>
-                                <td><span class="badge bg-primary">{{ item.model_id }}</span></td>
+                                <td><span class="badge bg-primary">{{ item.model_display_name or item.model_id }}</span></td>
                                 <td><strong>{{ item.stock_code }}</strong></td>
                                 <td>¥{{ "{:,.0f}".format(item.buy_price) }}</td>
                                 <td>¥{{ "{:,.0f}".format(item.sell_price) }}</td>
@@ -182,7 +323,7 @@
                             <tr>
                                 <td>{{ item.execution_date.strftime('%Y-%m-%d') if item.execution_date else 'N/A' }}</td>
                                 <td><span class="badge bg-info">{{ item.analysis_period }}</span></td>
-                                <td><span class="badge bg-primary">{{ item.model_id }}</span></td>
+                                <td><span class="badge bg-primary">{{ item.model_display_name or item.model_id }}</span></td>
                                 <td><strong>{{ item.stock_code }}</strong></td>
                                 <td>¥{{ "{:,.0f}".format(item.buy_price) }}</td>
                                 <td>¥{{ "{:,.0f}".format(item.sell_price) }}</td>
