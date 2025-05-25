@@ -53,11 +53,11 @@
             <div class="col-md-3">
                 <div class="card text-center">
                     <div class="card-body">
-                        <h5 class="card-title">🎯 予測精度</h5>
-                        <h3 class="{% if result.prediction_accuracy > 80 %}text-success{% elif result.prediction_accuracy > 60 %}text-warning{% else %}text-danger{% endif %}">
-                            {{ "{:.2f}".format(result.prediction_accuracy) }}%
+                        <h5 class="card-title">🎯 総合スコア</h5>
+                        <h3 class="{% if result.overall_score > 80 %}text-success{% elif result.overall_score > 60 %}text-warning{% else %}text-danger{% endif %}">
+                            {{ "{:.1f}".format(result.overall_score) }}%
                         </h3>
-                        <small class="text-muted">{% if result.prediction_accuracy > 80 %}高精度{% else %}要改善{% endif %}</small>
+                        <small class="text-muted">{% if result.overall_score > 80 %}高精度{% else %}要改善{% endif %}</small>
                     </div>
                 </div>
             </div>
@@ -73,24 +73,63 @@
         </div>
 
         <!-- 詳細情報 -->
-        <div class="row">
-            <div class="col-md-6">
-                <h6>📈 株価情報</h6>
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <h6>📈 実際の株価情報</h6>
                 <ul class="list-unstyled">
-                    <li><strong>購入価格:</strong> ¥{{ "{:,.2f}".format(result.buy_price) }} ({{ result.actual_buy_date }})</li>
-                    <li><strong>売却価格:</strong> ¥{{ "{:,.2f}".format(result.sell_price) }} ({{ result.actual_sell_date }})</li>
-                    <li><strong>LLM予測価格:</strong> ¥{{ "{:,.2f}".format(result.predicted_price) }}</li>
-                    <li><strong>予測誤差:</strong> ¥{{ "{:,.2f}".format(result.prediction_error) }}</li>
+                    <li><strong>購入価格:</strong> ¥{{ "{:,.0f}".format(result.buy_price) }}</li>
+                    <li><strong>売却価格:</strong> ¥{{ "{:,.0f}".format(result.sell_price) }}</li>
+                    <li><strong>期間最高値:</strong> ¥{{ "{:,.0f}".format(result.actual_high) }}</li>
+                    <li><strong>期間最安値:</strong> ¥{{ "{:,.0f}".format(result.actual_low) }}</li>
                 </ul>
             </div>
-            <div class="col-md-6">
-                <h6>🤖 LLM分析情報</h6>
+            <div class="col-md-4">
+                <h6>🔮 LLM予測値</h6>
                 <ul class="list-unstyled">
-                    <li><strong>モデル:</strong> {{ result.model_id }}</li>
-                    <li><strong>銘柄:</strong> {{ result.stock_code }}</li>
-                    <li><strong>分析期間:</strong> {{ result.period_days }}日間</li>
-                    <li><strong>予測精度:</strong> {{ "{:.2f}".format(result.prediction_accuracy) }}%</li>
+                    <li><strong>予想最高値:</strong> ¥{{ "{:,.0f}".format(result.predicted_high) }}</li>
+                    <li><strong>予想最安値:</strong> ¥{{ "{:,.0f}".format(result.predicted_low) }}</li>
+                    <li><strong>週末終値予想:</strong> ¥{{ "{:,.0f}".format(result.predicted_close) }}</li>
+                    <li><strong>期間:</strong> {{ result.period_days }}日間</li>
                 </ul>
+            </div>
+            <div class="col-md-4">
+                <h6>🎯 予測精度の詳細</h6>
+                <ul class="list-unstyled">
+                    <li><strong>終値精度:</strong> <span class="{% if result.close_accuracy > 80 %}text-success{% elif result.close_accuracy > 60 %}text-warning{% else %}text-danger{% endif %}">{{ "{:.1f}".format(result.close_accuracy) }}%</span></li>
+                    <li><strong>最高値精度:</strong> <span class="{% if result.high_accuracy > 80 %}text-success{% elif result.high_accuracy > 60 %}text-warning{% else %}text-danger{% endif %}">{{ "{:.1f}".format(result.high_accuracy) }}%</span></li>
+                    <li><strong>最安値精度:</strong> <span class="{% if result.low_accuracy > 80 %}text-success{% elif result.low_accuracy > 60 %}text-warning{% else %}text-danger{% endif %}">{{ "{:.1f}".format(result.low_accuracy) }}%</span></li>
+                    <li><strong>総合スコア:</strong> <span class="{% if result.overall_score > 80 %}text-success{% elif result.overall_score > 60 %}text-warning{% else %}text-danger{% endif %}">{{ "{:.1f}".format(result.overall_score) }}%</span></li>
+                </ul>
+            </div>
+        </div>
+        
+        <!-- 視覚的な精度比較 -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <h6>📊 予測精度の視覚的比較</h6>
+                <div class="row">
+                    <div class="col-md-4">
+                        <label class="form-label">終値精度</label>
+                        <div class="progress mb-2">
+                            <div class="progress-bar {% if result.close_accuracy > 80 %}bg-success{% elif result.close_accuracy > 60 %}bg-warning{% else %}bg-danger{% endif %}" 
+                                 style="width: {{ result.close_accuracy }}%">{{ "{:.1f}".format(result.close_accuracy) }}%</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">最高値精度</label>
+                        <div class="progress mb-2">
+                            <div class="progress-bar {% if result.high_accuracy > 80 %}bg-success{% elif result.high_accuracy > 60 %}bg-warning{% else %}bg-danger{% endif %}" 
+                                 style="width: {{ result.high_accuracy }}%">{{ "{:.1f}".format(result.high_accuracy) }}%</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">最安値精度</label>
+                        <div class="progress mb-2">
+                            <div class="progress-bar {% if result.low_accuracy > 80 %}bg-success{% elif result.low_accuracy > 60 %}bg-warning{% else %}bg-danger{% endif %}" 
+                                 style="width: {{ result.low_accuracy }}%">{{ "{:.1f}".format(result.low_accuracy) }}%</div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -102,12 +141,31 @@
             <input type="hidden" name="buy_price" value="{{ result.buy_price }}">
             <input type="hidden" name="sell_date" value="{{ result.actual_sell_date }}">
             <input type="hidden" name="sell_price" value="{{ result.sell_price }}">
+            
+            <!-- 3つの予測値 -->
+            <input type="hidden" name="predicted_high" value="{{ result.predicted_high }}">
+            <input type="hidden" name="predicted_low" value="{{ result.predicted_low }}">
+            <input type="hidden" name="predicted_close" value="{{ result.predicted_close }}">
             <input type="hidden" name="predicted_price" value="{{ result.predicted_price }}">
+            
+            <!-- 3つの実際値 -->
+            <input type="hidden" name="actual_high" value="{{ result.actual_high }}">
+            <input type="hidden" name="actual_low" value="{{ result.actual_low }}">
+            
+            <!-- 結果 -->
             <input type="hidden" name="profit_loss" value="{{ result.profit_loss }}">
             <input type="hidden" name="return_rate" value="{{ result.return_rate }}">
-            <input type="hidden" name="prediction_accuracy" value="{{ result.prediction_accuracy }}">
+            
+            <!-- 精度指標 -->
+            <input type="hidden" name="prediction_accuracy" value="{{ result.close_accuracy }}">
+            <input type="hidden" name="close_accuracy" value="{{ result.close_accuracy }}">
+            <input type="hidden" name="high_accuracy" value="{{ result.high_accuracy }}">
+            <input type="hidden" name="low_accuracy" value="{{ result.low_accuracy }}">
+            <input type="hidden" name="overall_score" value="{{ result.overall_score }}">
+            
             <input type="hidden" name="period_days" value="{{ result.period_days }}">
             <input type="hidden" name="notes" value="{{ result.notes }}">
+            
             <button type="submit" class="btn btn-primary btn-lg">
                 <i class="fas fa-save me-2"></i>結果を保存
             </button>
@@ -143,11 +201,30 @@
                         <div class="form-text">4桁の銘柄コードを入力してください</div>
                     </div>
 
+                    <div class="alert alert-info">
+                        <h6><i class="fas fa-lightbulb me-2"></i>LLM予測の3要素</h6>
+                        <small>プロンプトから取得した3つの予測値を入力してください</small>
+                    </div>
+
                     <div class="mb-3">
-                        <label for="predicted_price" class="form-label">🔮 LLM予測価格 (円)</label>
-                        <input type="number" step="0.01" class="form-control" id="predicted_price" 
-                               name="predicted_price" placeholder="予測価格を入力" required>
-                        <div class="form-text">LLMが予測した株価を入力してください</div>
+                        <label for="predicted_high" class="form-label">📈 予想最高値 (円)</label>
+                        <input type="number" step="0.01" class="form-control" id="predicted_high" 
+                               name="predicted_high" placeholder="期間中の最高値予測" required>
+                        <div class="form-text">週間で到達すると予想される最高価格</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="predicted_low" class="form-label">📉 予想最安値 (円)</label>
+                        <input type="number" step="0.01" class="form-control" id="predicted_low" 
+                               name="predicted_low" placeholder="期間中の最安値予測" required>
+                        <div class="form-text">週間で到達すると予想される最安価格</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="predicted_close" class="form-label">🎯 週末終値予想 (円)</label>
+                        <input type="number" step="0.01" class="form-control" id="predicted_close" 
+                               name="predicted_close" placeholder="最終日の終値予測" required>
+                        <div class="form-text">売却日の終値として予想される価格</div>
                     </div>
                 </div>
 

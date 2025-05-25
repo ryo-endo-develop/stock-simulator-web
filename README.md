@@ -1,148 +1,194 @@
-# 📊 LLM 投資アイデア検証ツール (Web 版)
+# 📊 LLM 投資アイデア検証ツール - 運用ガイド
 
-PostgreSQL と FastAPI を使用した Web アプリケーション
+PostgreSQL と FastAPI を使用した LLM 予測精度検証 Web アプリケーション
 
-## 🚀 機能
+## 🎯 このツールの目的
 
-### 📈 分析機能
+1. **固定銘柄分析**: 特定銘柄に対する LLM の予測精度を検証
+2. **銘柄選定分析**: LLM の銘柄選定能力を期間別に検証
+3. **統計分析**: 複数 LLM モデルのパフォーマンス比較
 
-- **固定銘柄分析**: 特定銘柄に対する LLM の予測精度を検証
-- **銘柄選定分析**: LLM の銘柄選定能力を期間別に検証
-- **履歴分析・統計**: 過去の分析結果の統計的評価とモデル比較
-
-### 📊 強化された履歴分析
-
-- **モデル別パフォーマンスランキング**: LLM モデルの予測精度を比較
-- **高度なフィルタリング**: 日付・モデル・騰落率での絞り込み
-- **CSV エクスポート**: 分析データの詳細出力
-- **リアルタイム統計**: 勝率・平均リターン・予測精度の追跡
-
-### 🤖 週次プロンプト生成
-
-- **自動プロンプト生成**: 生成 AI への質問文を自動作成
-- **上位 5 銘柄選定**: 1 週間の上昇期待銘柄の予測依頼
-- **個別銘柄分析**: トヨタ株の詳細予測
-- **バックテスト連携**: 予測結果を直接システムで検証
-
-## 📝 使用方法
-
-### 1️⃣ 基本的な分析フロー
-
-1. **固定銘柄分析**: http://localhost:8000/fixed-stock
-
-   - LLM モデルを選択
-   - 銘柄コードと予測価格を入力
-   - 購入日・売却日を指定
-   - 結果を保存して精度を検証
-
-2. **銘柄選定分析**: http://localhost:8000/stock-selection
-
-   - 分析期間 1 週間〜1 年）を選択
-   - LLM が選んだ銘柄と理由を入力
-   - 購入日を指定して自動計算
-   - 結果を保存して選定能力を評価
-
-3. **履歴分析**: http://localhost:8000/history
-   - モデル別パフォーマンスランキングを確認
-   - フィルターで結果を絞り込み
-   - CSV エクスポートで詳細分析
-
-### 2️⃣ 週次プロンプトでの予測ワークフロー
+## 🚀 初回セットアップ（最初に 1 回だけ）
 
 ```bash
-# 1. プロンプトを生成
-cd prompts/
-python generate_weekly_prompt.py
-
-# 2. 生成されたプロンプトを確認
-open generated/weekly_prompt_$(date +%Y%m%d).md
-```
-
-3. **プロンプトを Claude/ChatGPT に貼り付け**
-4. **回答をシミュレーターに入力**
-5. **1 週間後に結果を検証**
-
-### 3️⃣ データエクスポートと分析
-
-- **基本エクスポート**: 履歴ページの CSV ボタン
-- **高度なエクスポート**: フィルタ条件付き CSV 出力
-- **Excel での詳細分析**: ピボットテーブルやグラフ作成
-
-## 🐳 ローカル開発環境 (Docker)
-
-### 1. リポジトリをクローン
-
-```bash
+# 1. プロジェクト起動
 git clone <repository-url>
 cd stock_simulator_web
-```
+docker compose up -d
 
-### 2. Docker Compose で起動
-
-```bash
-docker compose up --build
-```
-
-### 3. アクセス
-
-- アプリケーション: http://localhost:8000
-- PostgreSQL: localhost:5432
-
-## 📎 プロジェクト構成
-
-```
-stock_simulator_web/
-├── 📄 main.py                    # FastAPIアプリケーション
-├── 📄 database.py               # データベース管理
-├── 📄 stock_analyzer.py          # 株価データ分析
-├── 📄 analytics.py              # 統計分析モジュール
-├── 📄 weekly_workflow.sh        # 週次運用支援スクリプト
-├── 📁 templates/                # HTMLテンプレート
-│   ├── base.html
-│   ├── index.html
-│   ├── fixed_stock.html
-│   ├── stock_selection.html
-│   └── history.html
-├── 📁 prompts/                  # 週次プロンプト生成ツール
-│   ├── README.md                  # 使用方法説明
-│   ├── weekly_stock_prediction.md # プロンプトテンプレート
-│   ├── generate_weekly_prompt.py  # プロンプト生成スクリプト
-│   ├── sample_response.md         # 回答例・使用例
-│   └── generated/                 # 生成されたプロンプト
-├── 📁 scripts/                  # データベース管理スクリプト
-│   ├── README.md                  # スクリプト詳細説明
-│   ├── db_check.sh               # DB状況確認
-│   ├── db_show_all.sh            # 全データ表示
-│   ├── db_reset.sh               # DBリセット
-│   ├── db_dump.sh                # DBダンプ
-│   ├── db_restore.sh             # DB復元
-│   ├── db_export_csv.sh          # CSVエクスポート
-│   ├── database_dumps/           # ダンプファイル保存先
-│   └── csv_exports/              # CSVファイル保存先
-├── 📁 ai_responses/             # AI回答管理
-│   ├── README.md                  # 回答管理ガイド
-│   ├── response_template.md       # 回答保存テンプレート
-│   ├── 20250525/                 # 日付別回答フォルダ
-│   └── archive/                  # 月次アーカイブ
-├── 📄 docker-compose.yml
-├── 📄 Dockerfile
-└── 📄 requirements.txt
-```
-
-## 🔧 データベース管理スクリプト
-
-### 🚀 スクリプト初期化
-
-```bash
-# スクリプトに実行権限を付与
+# 2. スクリプト初期化
 chmod +x setup_scripts.sh
 ./setup_scripts.sh
+
+# 3. 動作確認
+open http://localhost:8000
 ```
 
-### 📊 基本操作
+---
+
+## 📅 週次運用フロー（毎週繰り返し）
+
+### 🔄 **金曜日夕方：次週準備（2 分）**
 
 ```bash
-# データベース状況確認
+./weekly_workflow.sh prepare
+```
+
+**自動実行されること：**
+
+- 📝 来週のプロンプト生成：`prompts/generated/weekly_prompt_YYYYMMDD.md`
+- 📁 AI 回答保存フォルダ作成：`ai_responses/YYYYMMDD/`
+- 📋 回答テンプレート配布
+
+---
+
+### 👤 **土日：AI 質問・回答保存（15 分）**
+
+**⚠️ この作業は手動必須**
+
+#### 1. Claude 3.5 Sonnet
+
+```bash
+# 1. https://claude.ai にアクセス
+# 2. prompts/generated/weekly_prompt_YYYYMMDD.md の全文をコピー&ペースト
+# 3. 回答を ai_responses/YYYYMMDD/claude_response.md に全文保存
+```
+
+#### 2. ChatGPT-4
+
+```bash
+# 1. https://chatgpt.com にアクセス
+# 2. 同じプロンプトを全文コピー&ペースト
+# 3. 回答を ai_responses/YYYYMMDD/chatgpt_response.md に全文保存
+```
+
+#### 3. Gemini Pro
+
+```bash
+# 1. https://gemini.google.com にアクセス
+# 2. 同じプロンプトを全文コピー&ペースト
+# 3. 回答を ai_responses/YYYYMMDD/gemini_response.md に全文保存
+```
+
+---
+
+### 📊 **月曜日朝：予測をシステム記録（15 分）**
+
+```bash
+./weekly_workflow.sh record
+```
+
+**自動実行：**
+
+- アプリケーション起動確認
+- データベース状況確認
+
+**手動作業：ブラウザで以下を入力**
+
+#### A. 銘柄選定分析（15 件）
+
+**URL**: http://localhost:8000/stock-selection
+
+**Claude 分析（5 件）**：
+
+```
+分析期間: 1週間
+LLMモデル: Claude 3.5 Sonnet
+銘柄コード: [AIの1位銘柄]
+選定理由: [AIの選定理由をコピー]
+購入日: [来週月曜日]
+→ 実行・保存を5回繰り返し
+```
+
+**ChatGPT 分析（5 件）**：
+
+- LLM モデルを「ChatGPT-4」に変更
+- 同様に 5 銘柄を入力
+
+**Gemini 分析（5 件）**：
+
+- LLM モデルを「Gemini Pro」に変更
+- 同様に 5 銘柄を入力
+
+#### B. 固定銘柄分析（3 件）
+
+**URL**: http://localhost:8000/fixed-stock
+
+```
+LLMモデル: Claude 3.5 Sonnet
+銘柄コード: 7203
+予測価格: [Claudeの週末終値予想]
+購入日: [来週月曜日]
+売却日: [来週金曜日]
+→ 実行・保存
+
+# ChatGPT-4、Gemini Proでも同様に実行
+```
+
+#### C. 記録完了確認
+
+http://localhost:8000/history で合計 18 件が記録されているか確認
+
+---
+
+### 🔍 **金曜日夕方：結果検証（10 分）**
+
+```bash
+./weekly_workflow.sh verify
+```
+
+**自動実行：**
+
+- 週次統計集計
+- CSV エクスポート実行
+- データベースバックアップ
+
+**手動確認：**
+
+1. **http://localhost:8000/history** でパフォーマンスランキング確認
+2. 今週の勝率・予測精度をチェック
+3. CSV ファイルで詳細分析（任意）
+
+---
+
+## 📋 運用チェックリスト
+
+### ✅ 金曜日夕方（2 分）
+
+- [ ] `./weekly_workflow.sh prepare` 実行
+- [ ] プロンプトファイル生成確認
+- [ ] AI 回答フォルダ作成確認
+
+### ✅ 土日（15 分）
+
+- [ ] Claude 回答保存完了
+- [ ] ChatGPT 回答保存完了
+- [ ] Gemini 回答保存完了
+- [ ] 3 ファイルすべて保存確認
+
+### ✅ 月曜日朝（15 分）
+
+- [ ] `./weekly_workflow.sh record` 実行
+- [ ] アプリケーション起動確認
+- [ ] 銘柄選定分析 15 件入力完了
+- [ ] 固定銘柄分析 3 件入力完了
+- [ ] 履歴ページで 18 件確認
+
+### ✅ 金曜日夕方（10 分）
+
+- [ ] `./weekly_workflow.sh verify` 実行
+- [ ] パフォーマンスランキング確認
+- [ ] 勝率・精度データ確認
+- [ ] 次週準備完了
+
+---
+
+## 🛠️ データベース管理
+
+### 基本操作
+
+```bash
+# DB状況確認
 ./scripts/db_check.sh
 
 # 全データ表示
@@ -151,262 +197,107 @@ chmod +x setup_scripts.sh
 # CSVエクスポート
 ./scripts/db_export_csv.sh all
 
-# データベースダンプ
+# DBバックアップ
 ./scripts/db_dump.sh full
 
-# データベースリセット
+# DBリセット（注意）
 ./scripts/db_reset.sh
 ```
 
-### 📁 スクリプト一覧
+### スクリプト一覧
 
-| スクリプト         | 説明                     | 使用例                                   |
-| ------------------ | ------------------------ | ---------------------------------------- |
-| `auto_import.py`   | 🤖 AI 回答自動解析・投入 | `python scripts/auto_import.py 20250525` |
-| `auto_update.py`   | 📊 結果自動更新          | `python scripts/auto_update.py 20250525` |
-| `db_check.sh`      | DB 状況確認              | `./scripts/db_check.sh`                  |
-| `db_show_all.sh`   | 全データ表示             | `./scripts/db_show_all.sh`               |
-| `db_reset.sh`      | DB リセット              | `./scripts/db_reset.sh`                  |
-| `db_dump.sh`       | DB ダンプ                | `./scripts/db_dump.sh full`              |
-| `db_restore.sh`    | DB 復元                  | `./scripts/db_restore.sh <file>`         |
-| `db_export_csv.sh` | CSV 出力                 | `./scripts/db_export_csv.sh all`         |
+| スクリプト         | 説明         | 使用例                           |
+| ------------------ | ------------ | -------------------------------- |
+| `db_check.sh`      | DB 状況確認  | `./scripts/db_check.sh`          |
+| `db_show_all.sh`   | 全データ表示 | `./scripts/db_show_all.sh`       |
+| `db_reset.sh`      | DB リセット  | `./scripts/db_reset.sh`          |
+| `db_dump.sh`       | DB ダンプ    | `./scripts/db_dump.sh full`      |
+| `db_restore.sh`    | DB 復元      | `./scripts/db_restore.sh <file>` |
+| `db_export_csv.sh` | CSV 出力     | `./scripts/db_export_csv.sh all` |
 
-**詳細**: `scripts/README.md`
+---
 
-## 📅 運用手順ガイド
+## 🔧 トラブルシューティング
 
-### 🚀 初回セットアップ（最初に 1 回だけ）
+### Q: アプリケーションにアクセスできない
 
 ```bash
-# 1. プロジェクトを起動
-docker compose up -d
-
-# 2. スクリプトに実行権限を付与
-chmod +x setup_scripts.sh
-./setup_scripts.sh
-
-# 3. 動作確認
-open http://localhost:8000
-```
-
-### 🔄 週次運用フロー（毎週繰り返し）
-
----
-
-## 📋 **金曜日夕方：次週の準備（2 分）**
-
-### 🤖 **ステップ 1: プロンプト自動生成**
-
-```bash
-./weekly_workflow.sh prepare
-```
-
-**実行されること：**
-
-- 来週の日付を自動計算
-- プロンプトファイル生成（例：`prompts/generated/weekly_prompt_20250525.md`）
-- AI 回答保存用フォルダ作成（例：`ai_responses/20250525/`）
-- 回答テンプレートファイルの準備
-
----
-
-## 👤 **土日：AI に質問・回答保存（15 分）**
-
-**手動作業のみ - 以下を順番に実行：**
-
-### **1. Claude 3.5 Sonnet に質問**
-
-1. https://claude.ai にアクセス
-2. `prompts/generated/weekly_prompt_YYYYMMDD.md` の**全文をコピー&ペースト**
-3. 回答を取得
-4. 回答を `ai_responses/20250525/claude_response.md` に**全文保存**
-
-### **2. ChatGPT-4 に質問**
-
-1. https://chatgpt.com にアクセス
-2. 同じプロンプトを**全文コピー&ペースト**
-3. 回答を `ai_responses/20250525/chatgpt_response.md` に**全文保存**
-
-### **3. Gemini Pro に質問**
-
-1. https://gemini.google.com にアクセス
-2. 同じプロンプトを**全文コピー&ペースト**
-3. 回答を `ai_responses/20250525/gemini_response.md` に**全文保存**
-
----
-
-## 🤖 **月曜日朝：AI 回答を自動投入（1 分）**
-
-### **ステップ 1: 自動解析・投入実行**
-
-```bash
-./weekly_workflow.sh record
-```
-
-**自動で実行されること：**
-
-- AI 回答ファイル（3 種類）を自動解析
-- 銘柄情報・選定理由・トヨタ予測を抽出
-- データベースに自動投入（合計 18 件）
-  - Claude: 銘柄 5 件 + トヨタ 1 件 = 6 件
-  - ChatGPT: 銘柄 5 件 + トヨタ 1 件 = 6 件
-  - Gemini: 銘柄 5 件 + トヨタ 1 件 = 6 件
-- 結果をブラウザで確認可能
-
----
-
-## 🔍 **金曜日夕方：結果自動更新・検証（2 分）**
-
-### **ステップ 1: 結果自動更新・分析**
-
-```bash
-./weekly_workflow.sh verify
-```
-
-**自動で実行されること：**
-
-- 先週投入したデータの株価を自動取得
-- 損益・騰落率・予測精度を自動計算
-- パフォーマンス統計を自動更新
-- CSV エクスポート自動実行
-- データベースバックアップ自動実行
-- 履歴分析ページで結果確認
-
----
-
-## 📋 **運用チェックリスト**
-
-### ✅ **金曜日夕方（15 分）**
-
-- [ ] `./weekly_workflow.sh prepare` 実行
-- [ ] プロンプトファイル生成確認
-- [ ] AI 回答保存フォルダ作成確認
-
-### ✅ **土日（30 分）**
-
-- [ ] Claude 3.5 Sonnet に質問・回答保存
-- [ ] ChatGPT-4 に質問・回答保存
-- [ ] Gemini Pro に質問・回答保存
-- [ ] 回答ファイルの保存確認
-
-### ✅ **月曜日朝（15 分）**
-
-- [ ] `./weekly_workflow.sh record` 実行
-- [ ] アプリケーション起動確認
-- [ ] Claude 銘柄 5 件 + トヨタ 1 件記録
-- [ ] ChatGPT 銘柄 5 件 + トヨタ 1 件記録
-- [ ] Gemini 銘柄 5 件 + トヨタ 1 件記録
-- [ ] 合計 18 件の記録完了確認
-
-### ✅ **金曜日夕方（10 分）**
-
-- [ ] `./weekly_workflow.sh verify` 実行
-- [ ] パフォーマンスランキング確認
-- [ ] 今週の勝率・精度確認
-- [ ] CSV エクスポート完了確認
-- [ ] 次週準備の計画
-
----
-
-## 🔧 **よくあるトラブルと対処法**
-
-### **Q: アプリケーションにアクセスできない**
-
-```bash
-# コンテナ状況確認
-docker-compose ps
+# コンテナ確認
+docker compose ps
 
 # 再起動
-docker-compose restart
+docker compose restart
 
-# 完全リセット（最後の手段）
-docker-compose down
-docker-compose up -d
+# 完全リセット
+docker compose down && docker compose up -d
 ```
 
-### **Q: データが正しく保存されない**
+### Q: データが保存されない
 
 ```bash
-# データベース状況確認
+# DB状況確認
 ./scripts/db_check.sh
 
 # ログ確認
-docker-compose logs app
+docker compose logs app
 ```
 
-### **Q: プロンプト生成でエラーが出る**
+### Q: プロンプト生成エラー
 
 ```bash
 # Python環境確認
 python --version
 
-# 手動でプロンプトファイルを編集
+# 手動編集
 open prompts/weekly_stock_prediction.md
 ```
 
-### **Q: AI 回答の品質が悪い**
-
-- 市場環境の補足情報をプロンプトに追加
-- 過去の成功例を参考にプロンプト調整
-- 質問する時間帯を変更（市場の開いている時間など）
-
 ---
 
-### エンドポイント
+## 📊 技術仕様
 
-- `GET /` - ホームページ
-- `GET /fixed-stock` - 固定銘柄分析フォーム
-- `POST /fixed-stock` - 固定銘柄分析実行
-- `POST /fixed-stock/save` - 結果保存
-- `GET /stock-selection` - 銘柄選定分析フォーム
-- `POST /stock-selection` - 銘柄選定分析実行
-- `POST /stock-selection/save` - 結果保存
-- `GET /history` - 履歴分析
+### アクセス URL
 
-## データベーススキーマ
+- **アプリケーション**: http://localhost:8000
+- **固定銘柄分析**: http://localhost:8000/fixed-stock
+- **銘柄選定分析**: http://localhost:8000/stock-selection
+- **履歴分析**: http://localhost:8000/history
 
-### fixed_stock_analysis テーブル
-
-- id (主キー)
-- execution_date (実行日)
-- model_id (LLM モデル名)
-- stock_code (銘柄コード)
-- buy_date, buy_price (購入日・価格)
-- sell_date, sell_price (売却日・価格)
-- predicted_price (予測価格)
-- profit_loss (損益)
-- return_rate (騰落率)
-- prediction_accuracy (予測精度)
-- period_days (期間)
-- notes (備考)
-- created_at (作成日時)
-
-### stock_selection_analysis テーブル
-
-- id (主キー)
-- execution_date (実行日)
-- analysis_period (分析期間)
-- model_id (LLM モデル名)
-- stock_code (銘柄コード)
-- selection_reason (選定理由)
-- buy_date, buy_price (購入日・価格)
-- sell_date, sell_price (売却日・価格)
-- profit_loss (損益)
-- return_rate (騰落率)
-- period_days (期間)
-- notes (備考)
-- created_at (作成日時)
-
-## 技術スタック
+### 技術スタック
 
 - **Backend**: FastAPI + SQLAlchemy
 - **Database**: PostgreSQL
 - **Frontend**: Jinja2 + Bootstrap 5
 - **株価データ**: yfinance
-- **Deploy**: Render
 
-## 注意事項
+### ファイル構成
 
-- 検証目的のツールであり、実際の投資判断には使用しないでください
-- 株価データは yfinance から取得するため、インターネット接続が必要です
-- 実際の取引手数料や税金は考慮されていません
+```
+stock_simulator_web/
+├── 📄 main.py                    # FastAPIアプリ
+├── 📄 database.py               # DB管理
+├── 📄 stock_analyzer.py         # 株価分析
+├── 📄 analytics.py              # 統計分析
+├── 📄 weekly_workflow.sh        # 週次運用スクリプト
+├── 📁 templates/                # HTMLテンプレート
+├── 📁 prompts/                  # プロンプト生成ツール
+├── 📁 scripts/                  # DB管理スクリプト
+├── 📁 ai_responses/             # AI回答管理
+├── 📄 docker-compose.yml
+├── 📄 Dockerfile
+└── 📄 requirements.txt
+```
+
+---
+
+## ⚠️ 重要な注意事項
+
+1. **投資助言ではありません**: あくまで検証・研究目的のツールです
+2. **手数料考慮なし**: 実際の取引手数料や税金は含まれていません
+3. **データ取得**: yfinance を使用するためインターネット接続が必要
+4. **営業日調整**: 休場日は直後の営業日データを使用
+5. **バックアップ推奨**: 重要なデータは定期的にバックアップしてください
+
+---
+
+**Happy Trading Analysis! 📈🤖**

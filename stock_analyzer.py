@@ -385,6 +385,55 @@ class StockAnalyzer:
         return ((sell_price - buy_price) / buy_price) * 100
 
     @staticmethod
+    def get_period_high_low_prices(
+        stock_code: str, start_date: str, end_date: str
+    ) -> Tuple[Optional[float], Optional[float]]:
+        """期間中の最高値と最安値を取得"""
+        try:
+            # サンプルデータの場合
+            if stock_code in ["7203", "6758", "9984", "8306", "4502", "1234", "5678"]:
+                # 簡単なシミュレーションで最高・最安値を生成
+                buy_price, _ = StockAnalyzer.get_closest_business_day_price(stock_code, start_date)
+                sell_price, _ = StockAnalyzer.get_closest_business_day_price(stock_code, end_date)
+                
+                if buy_price is None or sell_price is None:
+                    return None, None
+                
+                # 簡単なシミュレーション：最高値は+2%、最安値は-1.5%
+                price_range = max(buy_price, sell_price)
+                high_price = price_range * 1.02
+                low_price = min(buy_price, sell_price) * 0.985
+                
+                return high_price, low_price
+            
+            # 実際のデータ取得を試行
+            data = StockAnalyzer.get_stock_data(stock_code, start_date, end_date)
+            if data is None or data.empty:
+                return None, None
+            
+            # 期間でフィルタリング
+            start_dt = pd.to_datetime(start_date)
+            end_dt = pd.to_datetime(end_date)
+            
+            if data.index.tz is not None:
+                data.index = data.index.tz_convert("Asia/Tokyo").tz_localize(None)
+            
+            mask = (data.index >= start_dt) & (data.index <= end_dt)
+            period_data = data[mask]
+            
+            if period_data.empty:
+                return None, None
+            
+            high_price = float(period_data["High"].max())
+            low_price = float(period_data["Low"].min())
+            
+            return high_price, low_price
+            
+        except Exception as e:
+            print(f"期間最高・最安値取得エラー: {str(e)}")
+            return None, None
+
+    @staticmethod
     def calculate_prediction_accuracy(
         actual_price: float, predicted_price: float
     ) -> float:
@@ -394,3 +443,23 @@ class StockAnalyzer:
         error_rate = abs(actual_price - predicted_price) / actual_price
         accuracy = max(0, (1 - error_rate) * 100)
         return accuracy
+        
+    @staticmethod
+    def calculate_overall_prediction_score(
+        high_accuracy: float, low_accuracy: float, close_accuracy: float
+    ) -> float:
+        """総合予測スコアを計算（終値を重視）"""
+        # 終値予測を最も重視し、最高・最安値は補助的に考慮
+        weights = {
+            'close': 0.5,   # 終値予測の重み
+            'high': 0.25,   # 最高値予測の重み
+            'low': 0.25     # 最安値予測の重み
+        }
+        
+        score = (
+            close_accuracy * weights['close'] +
+            high_accuracy * weights['high'] +
+            low_accuracy * weights['low']
+        )
+        
+        return round(score, 2)

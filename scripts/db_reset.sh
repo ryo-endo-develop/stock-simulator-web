@@ -11,6 +11,12 @@ echo "  • 固定銘柄分析の全データ"
 echo "  • 銘柄選定分析の全データ"
 echo "  • AIモデルデータ（再投入されます）"
 echo ""
+echo "💾 推奨: リセット前にバックアップを取得してください"
+echo "   ./scripts/db_dump.sh full"
+echo ""
+echo "🆆 代替手段: マイグレーションでデータを保持"
+echo "   ./scripts/run_migrations.sh"
+echo ""
 
 # 確認プロンプト
 read -p "本当にデータベースをリセットしますか？ (yes/no): " confirm
@@ -50,17 +56,90 @@ echo "AIモデル: $AI_MODELS_COUNT 件"
 echo ""
 echo "🗑️  データ削除中..."
 
-# 分析データを削除
+# データを削除
 docker exec $DB_CONTAINER psql -U $DB_USER -d $DB_NAME -c "
-DELETE FROM fixed_stock_analysis;
-DELETE FROM stock_selection_analysis;
-DELETE FROM ai_models;
+DROP TABLE IF EXISTS fixed_stock_analysis CASCADE;
+DROP TABLE IF EXISTS stock_selection_analysis CASCADE;
+DROP TABLE IF EXISTS ai_models CASCADE;
 "
 
-echo "✅ データ削除完了"
+echo "✅ テーブル削除完了"
 
 echo ""
 echo "🔄 AIモデル初期データ再投入中..."
+
+# テーブルを再作成してAIモデルの初期データを再投入
+echo "🛠️  テーブルを再作成中..."
+docker exec $DB_CONTAINER psql -U $DB_USER -d $DB_NAME -c "
+CREATE TABLE IF NOT EXISTS ai_models (
+    id SERIAL PRIMARY KEY,
+    model_code VARCHAR UNIQUE NOT NULL,
+    model_name VARCHAR NOT NULL,
+    provider VARCHAR NOT NULL,
+    model_type VARCHAR NOT NULL,
+    version VARCHAR,
+    description TEXT,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS fixed_stock_analysis (
+    id SERIAL PRIMARY KEY,
+    execution_date TIMESTAMP NOT NULL,
+    model_id VARCHAR NOT NULL,
+    stock_code VARCHAR NOT NULL,
+    buy_date VARCHAR NOT NULL,
+    buy_price FLOAT NOT NULL,
+    sell_date VARCHAR NOT NULL,
+    sell_price FLOAT NOT NULL,
+    
+    -- 3つの予測値
+    predicted_high FLOAT,
+    predicted_low FLOAT,
+    predicted_close FLOAT NOT NULL,
+    
+    -- 実際の値
+    actual_high FLOAT,
+    actual_low FLOAT,
+    
+    -- 下位互換性
+    predicted_price FLOAT NOT NULL,
+    
+    profit_loss FLOAT NOT NULL,
+    return_rate FLOAT NOT NULL,
+    prediction_accuracy FLOAT NOT NULL,
+    
+    -- 新しい精度指標
+    high_prediction_accuracy FLOAT,
+    low_prediction_accuracy FLOAT,
+    overall_prediction_score FLOAT,
+    
+    period_days INTEGER NOT NULL,
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS stock_selection_analysis (
+    id SERIAL PRIMARY KEY,
+    execution_date TIMESTAMP NOT NULL,
+    analysis_period VARCHAR NOT NULL,
+    model_id VARCHAR NOT NULL,
+    stock_code VARCHAR NOT NULL,
+    selection_reason TEXT NOT NULL,
+    buy_date VARCHAR NOT NULL,
+    buy_price FLOAT NOT NULL,
+    sell_date VARCHAR NOT NULL,
+    sell_price FLOAT NOT NULL,
+    profit_loss FLOAT NOT NULL,
+    return_rate FLOAT NOT NULL,
+    period_days INTEGER NOT NULL,
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+"
+
+echo "✅ テーブル再作成完了"
 
 # AIモデルの初期データを再投入
 docker exec $DB_CONTAINER psql -U $DB_USER -d $DB_NAME -c "

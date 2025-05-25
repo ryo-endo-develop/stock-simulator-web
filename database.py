@@ -58,10 +58,28 @@ class FixedStockAnalysis(Base):
     buy_price = Column(Float, nullable=False)
     sell_date = Column(String, nullable=False)
     sell_price = Column(Float, nullable=False)
-    predicted_price = Column(Float, nullable=False)
+    
+    # 3つの予測値（新規追加）
+    predicted_high = Column(Float, nullable=True)  # 予想最高値
+    predicted_low = Column(Float, nullable=True)   # 予想最安値
+    predicted_close = Column(Float, nullable=False) # 週末終値予想（従来のpredicted_price）
+    
+    # 実際の値（新規追加）
+    actual_high = Column(Float, nullable=True)     # 実際の最高値
+    actual_low = Column(Float, nullable=True)      # 実際の最安値
+    
+    # 下位互換性のため残す
+    predicted_price = Column(Float, nullable=False)  # predicted_closeと同じ値
+    
     profit_loss = Column(Float, nullable=False)
     return_rate = Column(Float, nullable=False)
-    prediction_accuracy = Column(Float, nullable=False)
+    prediction_accuracy = Column(Float, nullable=False)  # 終値予測精度
+    
+    # 新しい精度指標（新規追加）
+    high_prediction_accuracy = Column(Float, nullable=True)  # 最高値予測精度
+    low_prediction_accuracy = Column(Float, nullable=True)   # 最安値予測精度
+    overall_prediction_score = Column(Float, nullable=True)  # 総合予測スコア
+    
     period_days = Column(Integer, nullable=False)
     notes = Column(Text)
     created_at = Column(DateTime, default=func.now())
@@ -92,10 +110,24 @@ class DatabaseManager:
 
     @staticmethod
     def init_database():
-        """データベースとテーブルを初期化"""
+        """データベースとテーブルを初期化（マイグレーション対応）"""
         try:
+            print("🛠️  データベースを初期化中...")
+            
+            # ベーステーブルを作成（既存の場合はスキップ）
             Base.metadata.create_all(bind=engine)
-            print("データベースを初期化しました")
+            print("✅ ベーステーブル作成完了")
+
+            # マイグレーションを実行
+            try:
+                from migration_manager import MigrationManager
+                migration_manager = MigrationManager()
+                migration_manager.run_pending_migrations()
+            except ImportError:
+                print("⚠️  マイグレーションマネージャーが見つかりません")
+            except Exception as e:
+                print(f"⚠️  マイグレーションエラー: {str(e)}")
+                print("通常の初期化を続行します")
 
             # AIモデルの初期データを投入
             DatabaseManager.init_ai_models()
@@ -317,10 +349,26 @@ class DatabaseManager:
                 buy_price=data["buy_price"],
                 sell_date=data["sell_date"],
                 sell_price=data["sell_price"],
-                predicted_price=data["predicted_price"],
+                
+                # 3つの予測値
+                predicted_high=data.get("predicted_high"),
+                predicted_low=data.get("predicted_low"),
+                predicted_close=data.get("predicted_close", data.get("predicted_price")),
+                predicted_price=data.get("predicted_price", data.get("predicted_close")),
+                
+                # 3つの実際値
+                actual_high=data.get("actual_high"),
+                actual_low=data.get("actual_low"),
+                
                 profit_loss=data["profit_loss"],
                 return_rate=data["return_rate"],
+                
+                # 精度指標
                 prediction_accuracy=data["prediction_accuracy"],
+                high_prediction_accuracy=data.get("high_accuracy"),
+                low_prediction_accuracy=data.get("low_accuracy"),
+                overall_prediction_score=data.get("overall_score"),
+                
                 period_days=data["period_days"],
                 notes=data["notes"],
             )
@@ -398,10 +446,26 @@ class DatabaseManager:
                         "buy_price": analysis.buy_price,
                         "sell_date": analysis.sell_date,
                         "sell_price": analysis.sell_price,
-                        "predicted_price": analysis.predicted_price,
+                        
+                        # 3つの予測値
+                        "predicted_high": analysis.predicted_high,
+                        "predicted_low": analysis.predicted_low,
+                        "predicted_close": analysis.predicted_close,
+                        "predicted_price": analysis.predicted_price,  # 下位互換性
+                        
+                        # 3つの実際値
+                        "actual_high": analysis.actual_high,
+                        "actual_low": analysis.actual_low,
+                        
                         "profit_loss": analysis.profit_loss,
                         "return_rate": analysis.return_rate,
+                        
+                        # 精度指標
                         "prediction_accuracy": analysis.prediction_accuracy,
+                        "high_prediction_accuracy": analysis.high_prediction_accuracy,
+                        "low_prediction_accuracy": analysis.low_prediction_accuracy,
+                        "overall_prediction_score": analysis.overall_prediction_score,
+                        
                         "period_days": analysis.period_days,
                         "notes": analysis.notes,
                         "created_at": analysis.created_at,

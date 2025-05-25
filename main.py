@@ -62,7 +62,9 @@ async def fixed_stock_submit(
     request: Request,
     model_id: str = Form(...),
     stock_code: str = Form(...),
-    predicted_price: float = Form(...),
+    predicted_high: float = Form(...),
+    predicted_low: float = Form(...),
+    predicted_close: float = Form(...),
     buy_date: str = Form(...),
     sell_date: str = Form(...),
     notes: str = Form(""),
@@ -70,12 +72,35 @@ async def fixed_stock_submit(
     """固定銘柄分析処理"""
     try:
         # バリデーション
-        if not all([model_id.strip(), stock_code.strip(), predicted_price > 0]):
+        if not all([model_id.strip(), stock_code.strip(), 
+                   predicted_high > 0, predicted_low > 0, predicted_close > 0]):
             return templates.TemplateResponse(
                 "fixed_stock.html",
                 {
                     "request": request,
                     "error_message": "必須項目を全て入力してください。",
+                    "ai_models": DatabaseManager.get_ai_models(),
+                },
+            )
+            
+        # 予測値の論理チェック
+        if predicted_low > predicted_high:
+            return templates.TemplateResponse(
+                "fixed_stock.html",
+                {
+                    "request": request,
+                    "error_message": "最安値は最高値より低い値を入力してください。",
+                    "ai_models": DatabaseManager.get_ai_models(),
+                },
+            )
+            
+        if predicted_close < predicted_low or predicted_close > predicted_high:
+            return templates.TemplateResponse(
+                "fixed_stock.html",
+                {
+                    "request": request,
+                    "error_message": "週末終値予想は最安値と最高値の間の値を入力してください。",
+                    "ai_models": DatabaseManager.get_ai_models(),
                 },
             )
 
@@ -138,12 +163,36 @@ async def fixed_stock_submit(
                 },
             )
 
-        # 計算
+        # 期間中の最高・最安値を取得
+        print(f"期間中の最高・最安値取得開始: {stock_code} - {buy_date} to {sell_date}")
+        actual_high, actual_low = StockAnalyzer.get_period_high_low_prices(
+            stock_code, buy_date, sell_date
+        )
+        
+        if actual_high is None or actual_low is None:
+            print(f"最高・最安値の取得に失敗、デフォルト値を使用")
+            # フォールバック: 購入・売却価格から推定
+            actual_high = max(buy_price, sell_price) * 1.01
+            actual_low = min(buy_price, sell_price) * 0.99
+
+        # 各種精度計算
         profit_loss = sell_price - buy_price
         return_rate = StockAnalyzer.calculate_return_rate(buy_price, sell_price)
-        prediction_accuracy = StockAnalyzer.calculate_prediction_accuracy(
-            sell_price, predicted_price
+        
+        # 3つの予測精度を計算
+        close_accuracy = StockAnalyzer.calculate_prediction_accuracy(sell_price, predicted_close)
+        high_accuracy = StockAnalyzer.calculate_prediction_accuracy(actual_high, predicted_high)
+        low_accuracy = StockAnalyzer.calculate_prediction_accuracy(actual_low, predicted_low)
+        
+        # 総合スコアを計算
+        overall_score = StockAnalyzer.calculate_overall_prediction_score(
+            high_accuracy, low_accuracy, close_accuracy
         )
+        
+        # 下位互換性のためのpredicted_price
+        predicted_price = predicted_close
+        prediction_accuracy = close_accuracy
+        
         period_days = (sell_date_obj - buy_date_obj).days
 
         # 結果表示
@@ -153,15 +202,37 @@ async def fixed_stock_submit(
             "stock_name": stock_info.get("name", "不明"),
             "buy_price": buy_price,
             "sell_price": sell_price,
-            "predicted_price": predicted_price,
+            
+            # 3つの予測値
+            "predicted_high": predicted_high,
+            "predicted_low": predicted_low,
+            "predicted_close": predicted_close,
+            "predicted_price": predicted_price,  # 下位互換性
+            
+            # 3つの実際値
+            "actual_high": actual_high,
+            "actual_low": actual_low,
+            
+            # 結果
             "profit_loss": profit_loss,
             "return_rate": return_rate,
-            "prediction_accuracy": prediction_accuracy,
+            
+            # 3つの精度指標
+            "prediction_accuracy": prediction_accuracy,  # 終値精度（下位互換）
+            "close_accuracy": close_accuracy,
+            "high_accuracy": high_accuracy,
+            "low_accuracy": low_accuracy,
+            "overall_score": overall_score,
+            
             "period_days": period_days,
             "actual_buy_date": actual_buy_date,
             "actual_sell_date": actual_sell_date,
             "notes": notes,
-            "prediction_error": abs(sell_price - predicted_price),  # 予測誤差を追加
+            
+            # 誤差情報
+            "prediction_error": abs(sell_price - predicted_close),
+            "high_error": abs(actual_high - predicted_high),
+            "low_error": abs(actual_low - predicted_low),
         }
 
         return templates.TemplateResponse(
@@ -198,10 +269,27 @@ async def save_fixed_stock(
     buy_price: float = Form(...),
     sell_date: str = Form(...),
     sell_price: float = Form(...),
-    predicted_price: float = Form(...),
+    
+    # 3つの予測値
+    predicted_high: float = Form(None),
+    predicted_low: float = Form(None),
+    predicted_close: float = Form(None),
+    predicted_price: float = Form(...),  # 下位互換性
+    
+    # 3つの実際値
+    actual_high: float = Form(None),
+    actual_low: float = Form(None),
+    
     profit_loss: float = Form(...),
     return_rate: float = Form(...),
+    
+    # 精度指標
     prediction_accuracy: float = Form(...),
+    close_accuracy: float = Form(None),
+    high_accuracy: float = Form(None),
+    low_accuracy: float = Form(None),
+    overall_score: float = Form(None),
+    
     period_days: int = Form(...),
     notes: str = Form(""),
 ):
@@ -215,10 +303,26 @@ async def save_fixed_stock(
             "buy_price": buy_price,
             "sell_date": sell_date,
             "sell_price": sell_price,
+            
+            # 3つの予測値
+            "predicted_high": predicted_high,
+            "predicted_low": predicted_low,
+            "predicted_close": predicted_close or predicted_price,
             "predicted_price": predicted_price,
+            
+            # 3つの実際値
+            "actual_high": actual_high,
+            "actual_low": actual_low,
+            
             "profit_loss": profit_loss,
             "return_rate": return_rate,
+            
+            # 精度指標
             "prediction_accuracy": prediction_accuracy,
+            "high_accuracy": high_accuracy,
+            "low_accuracy": low_accuracy,
+            "overall_score": overall_score,
+            
             "period_days": period_days,
             "notes": notes,
         }
