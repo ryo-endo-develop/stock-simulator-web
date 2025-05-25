@@ -108,7 +108,47 @@ stock_simulator_web/
 └── 📄 requirements.txt
 ```
 
-## API 仕様
+## 🔧 データベース管理スクリプト
+
+### 🚀 スクリプト初期化
+
+```bash
+# スクリプトに実行権限を付与
+chmod +x setup_scripts.sh
+./setup_scripts.sh
+```
+
+### 📊 基本操作
+
+```bash
+# データベース状況確認
+./scripts/db_check.sh
+
+# 全データ表示
+./scripts/db_show_all.sh
+
+# CSVエクスポート
+./scripts/db_export_csv.sh all
+
+# データベースダンプ
+./scripts/db_dump.sh full
+
+# データベースリセット
+./scripts/db_reset.sh
+```
+
+### 📁 スクリプト一覧
+
+| スクリプト | 説明 | 使用例 |
+|-----------|------|---------|
+| `db_check.sh` | DB状況確認 | `./scripts/db_check.sh` |
+| `db_show_all.sh` | 全データ表示 | `./scripts/db_show_all.sh` |
+| `db_reset.sh` | DBリセット | `./scripts/db_reset.sh` |
+| `db_dump.sh` | DBダンプ | `./scripts/db_dump.sh full` |
+| `db_restore.sh` | DB復元 | `./scripts/db_restore.sh <file>` |
+| `db_export_csv.sh` | CSV出力 | `./scripts/db_export_csv.sh all` |
+
+**詳細**: `scripts/README.md`
 
 ### エンドポイント
 
