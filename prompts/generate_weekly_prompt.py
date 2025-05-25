@@ -44,7 +44,7 @@ def generate_weekly_prompt():
 
     # テンプレートファイルを読み込み
     template_path = os.path.join(
-        os.path.dirname(__file__), "weekly_stock_prediction.md"
+        os.path.dirname(__file__), "weekly_stock_prediction_v2.md"
     )
 
     with open(template_path, "r", encoding="utf-8") as f:

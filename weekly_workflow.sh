@@ -48,8 +48,8 @@ case $PHASE in
         ;;
         
     "record")
-        echo "📝 【記録フェーズ】予測をシステムに記録"
-        echo "====================================="
+        echo "📝 【記録フェーズ】予測をシステムに自動記録"
+        echo "======================================"
         echo ""
         
         # アプリケーション起動確認
@@ -70,53 +70,84 @@ case $PHASE in
         
         echo "✅ アプリケーションが起動中です"
         echo ""
-        echo "📊 データベース状況:"
-        ./scripts/db_check.sh | tail -n 5
-        echo ""
-        echo "🌐 ブラウザでアクセスしてください:"
-        echo "  http://localhost:8000"
-        echo ""
-        echo "📋 記録手順:"
-        echo "  1. 銘柄選定分析で各AIの上位5銘柄を記録"
-        echo "  2. 固定銘柄分析でトヨタ株予測を記録"
-        echo "  3. 合計: 銘柄選定15件 + 固定銘柄3件 = 18件"
-        echo ""
         
-        # 回答ファイルの確認
+        # 今日の回答ファイルを確認
         TODAY=$(date +%Y%m%d)
         if [ -d "ai_responses/$TODAY" ]; then
-            echo "📁 今日の回答ファイル:"
+            echo "📁 AI回答ファイル確認:"
             ls -la ai_responses/$TODAY/
+            echo ""
+            
+            # 自動投入を実行
+            echo "🤖 AI回答を自動解析・投入中..."
+            python scripts/auto_import.py $TODAY
+            
+            if [ $? -eq 0 ]; then
+                echo ""
+                echo "✅ 自動投入完了！"
+                echo "🌐 結果確認: http://localhost:8000/history"
+                echo ""
+                echo "📋 次のステップ:"
+                echo "  1週間後に verify フェーズで結果を更新・検証"
+            else
+                echo ""
+                echo "❌ 自動投入に失敗しました"
+                echo "📝 手動記録にフォールバック:"
+                echo "  1. ブラウザで http://localhost:8000 にアクセス"
+                echo "  2. 銘柄選定分析で各AIの上位5銘柄を記録"
+                echo "  3. 固定銘柄分析でトヨタ株予測を記録"
+            fi
         else
             echo "⚠️  ai_responses/$TODAY が見つかりません"
             echo "   prepare フェーズを先に実行してください"
+            echo ""
+            echo "📝 手動記録の場合:"
+            echo "  http://localhost:8000 で直接入力してください"
         fi
         ;;
         
     "verify")
-        echo "🔍 【検証フェーズ】週次結果の確認"
-        echo "==============================="
+        echo "🔍 【検証フェーズ】週次結果の自動更新・確認"
+        echo "==========================================="
         echo ""
         
-        # 1. 結果確認
-        echo "1️⃣ 週次結果を確認中..."
+        # 1. 結果自動更新
+        TODAY=$(date +%Y%m%d)
+        LAST_WEEK=$(date -d "7 days ago" +%Y%m%d)
+        
+        echo "1️⃣ 株価結果を自動更新中..."
+        echo "対象期間: $LAST_WEEK - $TODAY"
+        echo ""
+        
+        # 先週のデータを更新
+        python scripts/auto_update.py $LAST_WEEK
+        
+        if [ $? -eq 0 ]; then
+            echo "✅ 結果更新完了"
+        else
+            echo "⚠️ 結果更新に問題がありました"
+        fi
+        echo ""
+        
+        # 2. 結果確認
+        echo "2️⃣ 週次結果を確認中..."
         echo ""
         echo "📊 今週の実績サマリー:"
         ./scripts/db_show_all.sh | tail -n 15
         echo ""
         
-        # 2. CSVエクスポート
-        echo "2️⃣ CSVエクスポート実行中..."
+        # 3. CSVエクスポート
+        echo "3️⃣ CSVエクスポート実行中..."
         ./scripts/db_export_csv.sh all
         echo ""
         
-        # 3. バックアップ作成
-        echo "3️⃣ 週次バックアップ作成中..."
+        # 4. バックアップ作成
+        echo "4️⃣ 週次バックアップ作成中..."
         ./scripts/db_dump.sh full
         echo ""
         
-        # 4. 履歴分析ページを開く
-        echo "4️⃣ 履歴分析ページを開いています..."
+        # 5. 履歴分析ページを開く
+        echo "5️⃣ 履歴分析結果確認"
         echo ""
         echo "🌐 ブラウザでアクセスしてください:"
         echo "  http://localhost:8000/history"
@@ -125,10 +156,11 @@ case $PHASE in
         echo "  • モデル別パフォーマンスランキング"
         echo "  • 今週の勝率・精度"
         echo "  • 累計統計の変化"
+        echo "  • 予測が外れた銘柄の分析"
         echo ""
         
-        # 5. 次週の準備案内
-        echo "5️⃣ 次週の準備:"
+        # 6. 次週の準備案内
+        echo "6️⃣ 次週の準備:"
         echo "  ./weekly_workflow.sh prepare"
         ;;
         
@@ -157,9 +189,16 @@ case $PHASE in
         echo "   • パフォーマンス分析案内"
         echo ""
         echo "💡 推奨スケジュール:"
-        echo "  金曜夕方: ./weekly_workflow.sh prepare"
-        echo "  月曜朝  : ./weekly_workflow.sh record"
-        echo "  金曜夕方: ./weekly_workflow.sh verify"
+        echo "  金曜夕方: ./weekly_workflow.sh prepare   # プロンプト生成"
+        echo "  土日    : AI回答を取得・保存           # 手動作業"
+        echo "  月曜朝  : ./weekly_workflow.sh record    # 自動投入"
+        echo "  金曜夕方: ./weekly_workflow.sh verify    # 自動更新・検証"
+        echo ""
+        echo "🚀 自動化機能:"
+        echo "  • AI回答ファイルの自動解析・投入"
+        echo "  • 株価データの自動取得・更新"
+        echo "  • パフォーマンス統計の自動計算"
+        echo "  • CSVエクスポート・バックアップ自動実行"
         echo ""
         echo "🔗 関連コマンド:"
         echo "  ./scripts/db_check.sh     - DB状況確認"

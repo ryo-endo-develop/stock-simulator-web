@@ -21,6 +21,7 @@ echo "🔧 スクリプトに実行権限を付与中..."
 
 chmod +x scripts/*.sh
 chmod +x weekly_workflow.sh
+chmod +x scripts/setup_automation.sh
 
 echo "✅ 実行権限付与完了"
 
