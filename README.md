@@ -1,14 +1,69 @@
-# LLM 投資アイデア検証ツール (Web 版)
+# 📊 LLM 投資アイデア検証ツール (Web 版)
 
 PostgreSQL と FastAPI を使用した Web アプリケーション
 
-## 機能
+## 🚀 機能
 
+### 📈 分析機能
 - **固定銘柄分析**: 特定銘柄に対する LLM の予測精度を検証
 - **銘柄選定分析**: LLM の銘柄選定能力を期間別に検証
-- **履歴分析**: 過去の分析結果の統計的評価
+- **履歴分析・統計**: 過去の分析結果の統計的評価とモデル比較
 
-## ローカル開発環境 (Docker)
+### 📊 強化された履歴分析
+- **モデル別パフォーマンスランキング**: LLMモデルの予測精度を比較
+- **高度なフィルタリング**: 日付・モデル・騰落率での絞り込み
+- **CSVエクスポート**: 分析データの詳細出力
+- **リアルタイム統計**: 勝率・平均リターン・予測精度の追跡
+
+### 🤖 週次プロンプト生成
+- **自動プロンプト生成**: 生成AIへの質問文を自動作成
+- **上位5銘柄選定**: 1週間の上昇期待銘柄の予測依頼
+- **個別銘柄分析**: トヨタ株の詳細予測
+- **バックテスト連携**: 予測結果を直接システムで検証
+
+## 📝 使用方法
+
+### 1️⃣ 基本的な分析フロー
+
+1. **固定銘柄分析**: http://localhost:8000/fixed-stock
+   - LLMモデルを選択
+   - 銘柄コードと予測価格を入力
+   - 購入日・売却日を指定
+   - 結果を保存して精度を検証
+
+2. **銘柄選定分析**: http://localhost:8000/stock-selection
+   - 分析期間1週間〜1年）を選択
+   - LLMが選んだ銘柄と理由を入力
+   - 購入日を指定して自動計算
+   - 結果を保存して選定能力を評価
+
+3. **履歴分析**: http://localhost:8000/history
+   - モデル別パフォーマンスランキングを確認
+   - フィルターで結果を絞り込み
+   - CSVエクスポートで詳細分析
+
+### 2️⃣ 週次プロンプトでの予測ワークフロー
+
+```bash
+# 1. プロンプトを生成
+cd prompts/
+python generate_weekly_prompt.py
+
+# 2. 生成されたプロンプトを確認
+open generated/weekly_prompt_$(date +%Y%m%d).md
+```
+
+3. **プロンプトをClaude/ChatGPTに貼り付け**
+4. **回答をシミュレーターに入力**
+5. **1週間後に結果を検証**
+
+### 3️⃣ データエクスポートと分析
+
+- **基本エクスポート**: 履歴ページのCSVボタン
+- **高度なエクスポート**: フィルタ条件付きCSV出力
+- **Excelでの詳細分析**: ピボットテーブルやグラフ作成
+
+## 🐳 ローカル開発環境 (Docker)
 
 ### 1. リポジトリをクローン
 
@@ -27,6 +82,31 @@ docker-compose up --build
 
 - アプリケーション: http://localhost:8000
 - PostgreSQL: localhost:5432
+
+## 📎 プロジェクト構成
+
+```
+stock_simulator_web/
+├── 📄 main.py                    # FastAPIアプリケーション
+├── 📄 database.py               # データベース管理
+├── 📄 stock_analyzer.py          # 株価データ分析
+├── 📄 analytics.py              # 統計分析モジュール
+├── 📁 templates/                # HTMLテンプレート
+│   ├── base.html
+│   ├── index.html
+│   ├── fixed_stock.html
+│   ├── stock_selection.html
+│   └── history.html
+├── 📁 prompts/                  # 週次プロンプト生成ツール
+│   ├── README.md                  # 使用方法説明
+│   ├── weekly_stock_prediction.md # プロンプトテンプレート
+│   ├── generate_weekly_prompt.py  # プロンプト生成スクリプト
+│   ├── sample_response.md         # 回答例・使用例
+│   └── generated/                 # 生成されたプロンプト
+├── 📄 docker-compose.yml
+├── 📄 Dockerfile
+└── 📄 requirements.txt
+```
 
 ## API 仕様
 
