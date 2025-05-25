@@ -3,8 +3,33 @@
 {% block title %}履歴分析 - LLM投資アイデア検証ツール{% endblock %}
 
 {% block content %}
-<h1 class="mb-4">📊 履歴分析・統計</h1>
-<p class="text-muted mb-4">過去の分析結果を統計的に評価し、LLMのパフォーマンスを比較します。</p>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="mb-2">📊 履歴分析・統計</h1>
+        <p class="text-muted mb-0">過去の分析結果を統計的に評価し、LLMのパフォーマンスを比較します。</p>
+    </div>
+    <div class="btn-group" role="group">
+        <button type="button" class="btn btn-outline-success dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="fas fa-download me-2"></i>CSVエクスポート
+        </button>
+        <ul class="dropdown-menu">
+            <li><a class="dropdown-item" href="/export/fixed-stock">
+                <i class="fas fa-chart-bar me-2"></i>固定銘柄分析データ
+            </a></li>
+            <li><a class="dropdown-item" href="/export/stock-selection">
+                <i class="fas fa-bullseye me-2"></i>銘柄選定分析データ
+            </a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="/export/all">
+                <i class="fas fa-file-csv me-2"></i>全データ統合
+            </a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#exportModal">
+                <i class="fas fa-filter me-2"></i>高度なエクスポート
+            </a></li>
+        </ul>
+    </div>
+</div>
 
 <!-- サマリー統計 -->
 <div class="row mb-4">
@@ -70,8 +95,11 @@
     <div class="tab-pane fade show active" id="fixed" role="tabpanel" aria-labelledby="fixed-tab">
         {% if fixed_data %}
         <div class="card">
-            <div class="card-header">
+            <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0"><i class="fas fa-chart-bar me-2"></i>固定銘柄分析履歴</h5>
+                <a href="/export/fixed-stock" class="btn btn-sm btn-success">
+                    <i class="fas fa-download me-1"></i>CSVエクスポート
+                </a>
             </div>
             <div class="card-body">
                 <div class="table-responsive">
@@ -127,8 +155,11 @@
     <div class="tab-pane fade" id="selection" role="tabpanel" aria-labelledby="selection-tab">
         {% if selection_data %}
         <div class="card">
-            <div class="card-header">
+            <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0"><i class="fas fa-bullseye me-2"></i>銘柄選定分析履歴</h5>
+                <a href="/export/stock-selection" class="btn btn-sm btn-success">
+                    <i class="fas fa-download me-1"></i>CSVエクスポート
+                </a>
             </div>
             <div class="card-body">
                 <div class="table-responsive">
@@ -189,4 +220,134 @@
 </div>
 
 {% endif %}
+
+<!-- 高度なエクスポートモーダル -->
+<div class="modal fade" id="exportModal" tabindex="-1" aria-labelledby="exportModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exportModalLabel">
+                    <i class="fas fa-filter me-2"></i>高度なエクスポート設定
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="exportForm">
+                    <div class="row mb-3">
+                        <label class="col-sm-3 col-form-label">エクスポートタイプ</label>
+                        <div class="col-sm-9">
+                            <select class="form-select" id="exportType" name="exportType" required>
+                                <option value="fixed-stock">固定銘柄分析データ</option>
+                                <option value="stock-selection">銘柄選定分析データ</option>
+                                <option value="all">全データ統合</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <label class="col-sm-3 col-form-label">LLMモデル</label>
+                        <div class="col-sm-9">
+                            <select class="form-select" id="modelId" name="modelId">
+                                <option value="">すべて</option>
+                                {% if stats.unique_models > 0 %}
+                                    <option value="gpt-4">GPT-4</option>
+                                    <option value="claude-3-opus">Claude 3 Opus</option>
+                                    <option value="gemini-pro">Gemini Pro</option>
+                                {% endif %}
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3" id="analysisPeriodsRow" style="display: none;">
+                        <label class="col-sm-3 col-form-label">分析期間</label>
+                        <div class="col-sm-9">
+                            <select class="form-select" id="analysisPeriod" name="analysisPeriod">
+                                <option value="">すべて</option>
+                                <option value="1週間">1週間</option>
+                                <option value="1ヶ月">1ヶ月</option>
+                                <option value="3ヶ月">3ヶ月</option>
+                                <option value="6ヶ月">6ヶ月</option>
+                                <option value="1年">1年</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <label class="col-sm-3 col-form-label">実行日期範囲</label>
+                        <div class="col-sm-4">
+                            <input type="date" class="form-control" id="startDate" name="startDate" placeholder="開始日">
+                        </div>
+                        <div class="col-sm-1 text-center">
+                            <span class="col-form-label">〜</span>
+                        </div>
+                        <div class="col-sm-4">
+                            <input type="date" class="form-control" id="endDate" name="endDate" placeholder="終了日">
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <label class="col-sm-3 col-form-label">騰落率範囲(%)</label>
+                        <div class="col-sm-4">
+                            <input type="number" class="form-control" id="minReturn" name="minReturn" 
+                                   placeholder="最小騰落率" step="0.1">
+                        </div>
+                        <div class="col-sm-1 text-center">
+                            <span class="col-form-label">〜</span>
+                        </div>
+                        <div class="col-sm-4">
+                            <input type="number" class="form-control" id="maxReturn" name="maxReturn" 
+                                   placeholder="最大騰落率" step="0.1">
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+                <button type="button" class="btn btn-success" onclick="executeAdvancedExport()">
+                    <i class="fas fa-download me-2"></i>エクスポート実行
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// エクスポートタイプが変わったときの処理
+document.getElementById('exportType').addEventListener('change', function() {
+    const analysisPeriodsRow = document.getElementById('analysisPeriodsRow');
+    if (this.value === 'stock-selection') {
+        analysisPeriodsRow.style.display = 'block';
+    } else {
+        analysisPeriodsRow.style.display = 'none';
+    }
+});
+
+// 高度なエクスポート実行
+function executeAdvancedExport() {
+    const form = document.getElementById('exportForm');
+    const formData = new FormData(form);
+    
+    const exportType = formData.get('exportType');
+    const params = new URLSearchParams();
+    
+    // パラメータを追加
+    if (formData.get('modelId')) params.append('model_id', formData.get('modelId'));
+    if (formData.get('analysisPeriod') && exportType === 'stock-selection') {
+        params.append('analysis_period', formData.get('analysisPeriod'));
+    }
+    if (formData.get('startDate')) params.append('start_date', formData.get('startDate'));
+    if (formData.get('endDate')) params.append('end_date', formData.get('endDate'));
+    if (formData.get('minReturn')) params.append('min_return', formData.get('minReturn'));
+    if (formData.get('maxReturn')) params.append('max_return', formData.get('maxReturn'));
+    
+    // URLを生成してダウンロード
+    const url = `/export/${exportType}?${params.toString()}`;
+    window.open(url, '_blank');
+    
+    // モーダルを閉じる
+    const modal = bootstrap.Modal.getInstance(document.getElementById('exportModal'));
+    modal.hide();
+}
+</script>
+
 {% endblock %}

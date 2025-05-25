@@ -1,9 +1,11 @@
+import io
 from datetime import datetime, timedelta
 from typing import Optional
 
+import pandas as pd
 import uvicorn
 from fastapi import FastAPI, Form, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 
 from database import DatabaseManager
@@ -473,6 +475,403 @@ async def history(request: Request):
             "stats": stats,
         },
     )
+
+
+@app.get("/export/fixed-stock")
+async def export_fixed_stock(
+    model_id: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    min_return: Optional[float] = None,
+    max_return: Optional[float] = None,
+):
+    """固定銘柄分析データをCSVエクスポート"""
+    try:
+        # データを取得
+        fixed_df = DatabaseManager.load_fixed_stock_data()
+
+        # フィルタリング処理
+        if not fixed_df.empty:
+            # モデルIDでフィルタリング
+            if model_id:
+                fixed_df = fixed_df[fixed_df["model_id"] == model_id]
+
+            # 日付範囲でフィルタリング
+            if start_date:
+                start_date_obj = datetime.strptime(start_date, "%Y-%m-%d")
+                fixed_df = fixed_df[
+                    pd.to_datetime(fixed_df["execution_date"]) >= start_date_obj
+                ]
+
+            if end_date:
+                end_date_obj = datetime.strptime(end_date, "%Y-%m-%d")
+                fixed_df = fixed_df[
+                    pd.to_datetime(fixed_df["execution_date"]) <= end_date_obj
+                ]
+
+            # 騰落率範囲でフィルタリング
+            if min_return is not None:
+                fixed_df = fixed_df[fixed_df["return_rate"] >= min_return]
+
+            if max_return is not None:
+                fixed_df = fixed_df[fixed_df["return_rate"] <= max_return]
+
+        if fixed_df.empty:
+            # 空の場合はヘッダーのみのCSVを返す
+            headers = [
+                "ID",
+                "実行日",
+                "LLMモデル",
+                "銘柄コード",
+                "購入日",
+                "購入価格",
+                "売却日",
+                "売却価格",
+                "予測価格",
+                "损益",
+                "騰落率(%)",
+                "予測精度(%)",
+                "保有期間(日)",
+                "備考",
+                "作成日時",
+            ]
+            empty_df = pd.DataFrame(columns=headers)
+            csv_content = empty_df.to_csv(index=False, encoding="utf-8-sig")
+        else:
+            # AIモデル情報を結合
+            ai_models = DatabaseManager.get_ai_models()
+            model_mapping = {
+                model["model_code"]: model["display_name"] for model in ai_models
+            }
+
+            # データを整形
+            export_df = fixed_df.copy()
+            export_df["model_display_name"] = (
+                export_df["model_id"].map(model_mapping).fillna(export_df["model_id"])
+            )
+
+            # 列名を日本語に変更
+            column_mapping = {
+                "id": "ID",
+                "execution_date": "実行日",
+                "model_display_name": "LLMモデル",
+                "stock_code": "銘柄コード",
+                "buy_date": "購入日",
+                "buy_price": "購入価格",
+                "sell_date": "売却日",
+                "sell_price": "売却価格",
+                "predicted_price": "予測価格",
+                "profit_loss": "损益",
+                "return_rate": "騰落率(%)",
+                "prediction_accuracy": "予測精度(%)",
+                "period_days": "保有期間(日)",
+                "notes": "備考",
+                "created_at": "作成日時",
+            }
+
+            # 必要な列を選択して並び替え
+            columns_to_export = [
+                "id",
+                "execution_date",
+                "model_display_name",
+                "stock_code",
+                "buy_date",
+                "buy_price",
+                "sell_date",
+                "sell_price",
+                "predicted_price",
+                "profit_loss",
+                "return_rate",
+                "prediction_accuracy",
+                "period_days",
+                "notes",
+                "created_at",
+            ]
+
+            export_df = export_df[columns_to_export].rename(columns=column_mapping)
+
+            # CSVとしてエクスポート
+            csv_content = export_df.to_csv(index=False, encoding="utf-8-sig")
+
+        # ファイル名を生成（日時付き）
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"fixed_stock_analysis_{timestamp}.csv"
+
+        # CSVファイルとしてダウンロードさせる
+        return StreamingResponse(
+            io.StringIO(csv_content),
+            media_type="text/csv",
+            headers={"Content-Disposition": f"attachment; filename={filename}"},
+        )
+
+    except Exception as e:
+        print(f"エクスポートエラー: {str(e)}")
+        return HTMLResponse(
+            content=f"<h1>エクスポートエラー</h1><p>{str(e)}</p>", status_code=500
+        )
+
+
+@app.get("/export/stock-selection")
+async def export_stock_selection(
+    model_id: Optional[str] = None,
+    analysis_period: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    min_return: Optional[float] = None,
+    max_return: Optional[float] = None,
+):
+    """銘柄選定分析データをCSVエクスポート"""
+    try:
+        # データを取得
+        selection_df = DatabaseManager.load_stock_selection_data()
+
+        # フィルタリング処理
+        if not selection_df.empty:
+            # モデルIDでフィルタリング
+            if model_id:
+                selection_df = selection_df[selection_df["model_id"] == model_id]
+
+            # 分析期間でフィルタリング
+            if analysis_period:
+                selection_df = selection_df[
+                    selection_df["analysis_period"] == analysis_period
+                ]
+
+            # 日付範囲でフィルタリング
+            if start_date:
+                start_date_obj = datetime.strptime(start_date, "%Y-%m-%d")
+                selection_df = selection_df[
+                    pd.to_datetime(selection_df["execution_date"]) >= start_date_obj
+                ]
+
+            if end_date:
+                end_date_obj = datetime.strptime(end_date, "%Y-%m-%d")
+                selection_df = selection_df[
+                    pd.to_datetime(selection_df["execution_date"]) <= end_date_obj
+                ]
+
+            # 騰落率範囲でフィルタリング
+            if min_return is not None:
+                selection_df = selection_df[selection_df["return_rate"] >= min_return]
+
+            if max_return is not None:
+                selection_df = selection_df[selection_df["return_rate"] <= max_return]
+
+        if selection_df.empty:
+            # 空の場合はヘッダーのみのCSVを返す
+            headers = [
+                "ID",
+                "実行日",
+                "分析期間",
+                "LLMモデル",
+                "銘柄コード",
+                "選定理由",
+                "購入日",
+                "購入価格",
+                "売却日",
+                "売却価格",
+                "损益",
+                "騰落率(%)",
+                "保有期間(日)",
+                "備考",
+                "作成日時",
+            ]
+            empty_df = pd.DataFrame(columns=headers)
+            csv_content = empty_df.to_csv(index=False, encoding="utf-8-sig")
+        else:
+            # AIモデル情報を結合
+            ai_models = DatabaseManager.get_ai_models()
+            model_mapping = {
+                model["model_code"]: model["display_name"] for model in ai_models
+            }
+
+            # データを整形
+            export_df = selection_df.copy()
+            export_df["model_display_name"] = (
+                export_df["model_id"].map(model_mapping).fillna(export_df["model_id"])
+            )
+
+            # 列名を日本語に変更
+            column_mapping = {
+                "id": "ID",
+                "execution_date": "実行日",
+                "analysis_period": "分析期間",
+                "model_display_name": "LLMモデル",
+                "stock_code": "銘柄コード",
+                "selection_reason": "選定理由",
+                "buy_date": "購入日",
+                "buy_price": "購入価格",
+                "sell_date": "売却日",
+                "sell_price": "売却価格",
+                "profit_loss": "损益",
+                "return_rate": "騰落率(%)",
+                "period_days": "保有期間(日)",
+                "notes": "備考",
+                "created_at": "作成日時",
+            }
+
+            # 必要な列を選択して並び替え
+            columns_to_export = [
+                "id",
+                "execution_date",
+                "analysis_period",
+                "model_display_name",
+                "stock_code",
+                "selection_reason",
+                "buy_date",
+                "buy_price",
+                "sell_date",
+                "sell_price",
+                "profit_loss",
+                "return_rate",
+                "period_days",
+                "notes",
+                "created_at",
+            ]
+
+            export_df = export_df[columns_to_export].rename(columns=column_mapping)
+
+            # CSVとしてエクスポート
+            csv_content = export_df.to_csv(index=False, encoding="utf-8-sig")
+
+        # ファイル名を生成（日時付き）
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"stock_selection_analysis_{timestamp}.csv"
+
+        # CSVファイルとしてダウンロードさせる
+        return StreamingResponse(
+            io.StringIO(csv_content),
+            media_type="text/csv",
+            headers={"Content-Disposition": f"attachment; filename={filename}"},
+        )
+
+    except Exception as e:
+        print(f"エクスポートエラー: {str(e)}")
+        return HTMLResponse(
+            content=f"<h1>エクスポートエラー</h1><p>{str(e)}</p>", status_code=500
+        )
+
+
+@app.get("/export/all")
+async def export_all_data():
+    """全データを統合してCSVエクスポート"""
+    try:
+        # 両方のデータを取得
+        fixed_df = DatabaseManager.load_fixed_stock_data()
+        selection_df = DatabaseManager.load_stock_selection_data()
+
+        # AIモデル情報を取得
+        ai_models = DatabaseManager.get_ai_models()
+        model_mapping = {
+            model["model_code"]: model["display_name"] for model in ai_models
+        }
+
+        combined_data = []
+
+        # 固定銘柄分析データを追加
+        if not fixed_df.empty:
+            for _, row in fixed_df.iterrows():
+                combined_data.append(
+                    {
+                        "ID": row["id"],
+                        "分析タイプ": "固定銘柄分析",
+                        "実行日": row["execution_date"],
+                        "LLMモデル": model_mapping.get(
+                            row["model_id"], row["model_id"]
+                        ),
+                        "銘柄コード": row["stock_code"],
+                        "購入日": row["buy_date"],
+                        "購入価格": row["buy_price"],
+                        "売却日": row["sell_date"],
+                        "売却価格": row["sell_price"],
+                        "予測価格": row.get("predicted_price", ""),
+                        "损益": row["profit_loss"],
+                        "騰落率(%)": row["return_rate"],
+                        "予測精度(%)": row.get("prediction_accuracy", ""),
+                        "分析期間": "",
+                        "選定理由": "",
+                        "保有期間(日)": row["period_days"],
+                        "備考": row.get("notes", ""),
+                        "作成日時": row["created_at"],
+                    }
+                )
+
+        # 銘柄選定分析データを追加
+        if not selection_df.empty:
+            for _, row in selection_df.iterrows():
+                combined_data.append(
+                    {
+                        "ID": row["id"],
+                        "分析タイプ": "銘柄選定分析",
+                        "実行日": row["execution_date"],
+                        "LLMモデル": model_mapping.get(
+                            row["model_id"], row["model_id"]
+                        ),
+                        "銘柄コード": row["stock_code"],
+                        "購入日": row["buy_date"],
+                        "購入価格": row["buy_price"],
+                        "売却日": row["sell_date"],
+                        "売却価格": row["sell_price"],
+                        "予測価格": "",
+                        "损益": row["profit_loss"],
+                        "騰落率(%)": row["return_rate"],
+                        "予測精度(%)": "",
+                        "分析期間": row["analysis_period"],
+                        "選定理由": row["selection_reason"],
+                        "保有期間(日)": row["period_days"],
+                        "備考": row.get("notes", ""),
+                        "作成日時": row["created_at"],
+                    }
+                )
+
+        # DataFrameとして結合
+        if combined_data:
+            combined_df = pd.DataFrame(combined_data)
+            # 作成日時でソート（新しい順）
+            combined_df = combined_df.sort_values("作成日時", ascending=False)
+        else:
+            # データがない場合は空のDataFrame
+            columns = [
+                "ID",
+                "分析タイプ",
+                "実行日",
+                "LLMモデル",
+                "銘柄コード",
+                "購入日",
+                "購入価格",
+                "売却日",
+                "売却価格",
+                "予測価格",
+                "损益",
+                "騰落率(%)",
+                "予測精度(%)",
+                "分析期間",
+                "選定理由",
+                "保有期間(日)",
+                "備考",
+                "作成日時",
+            ]
+            combined_df = pd.DataFrame(columns=columns)
+
+        # CSVとしてエクスポート
+        csv_content = combined_df.to_csv(index=False, encoding="utf-8-sig")
+
+        # ファイル名を生成（日時付き）
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"all_analysis_data_{timestamp}.csv"
+
+        # CSVファイルとしてダウンロードさせる
+        return StreamingResponse(
+            io.StringIO(csv_content),
+            media_type="text/csv",
+            headers={"Content-Disposition": f"attachment; filename={filename}"},
+        )
+
+    except Exception as e:
+        print(f"エクスポートエラー: {str(e)}")
+        return HTMLResponse(
+            content=f"<h1>エクスポートエラー</h1><p>{str(e)}</p>", status_code=500
+        )
 
 
 if __name__ == "__main__":
